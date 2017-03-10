@@ -29,19 +29,19 @@ You can copy everything in the public directory to your working directory, and m
 
 # 1.2. Project Requirements
 
-Each part of the MiniRel project will produce a function library libXX.a associated with one of the five layers BF, PF, HF, AM, and FE. For example, in the BF layer, the library will be called libbf.a, and will be made of the functions defined for the BF layer.
+* Each part of the MiniRel project will produce a function library libXX.a associated with one of the five layers BF, PF, HF, AM, and FE. For example, in the BF layer, the library will be called libbf.a, and will be made of the functions defined for the BF layer.
 
-All the code for each layer must be in a directory of its own. An external header file provided for each layer (e.g., bf.h for the BF layer) contains the layer's function prototypes and exported types. This header file will then be included (later on) in client layers, which need to use the layer's functions. If you need to augment the external header file, you can create your own internal header files instead of modifying the external header file.
+* All the code for each layer must be in a directory of its own. An external header file provided for each layer (e.g., bf.h for the BF layer) contains the layer's function prototypes and exported types. This header file will then be included (later on) in client layers, which need to use the layer's functions. If you need to augment the external header file, you can create your own internal header files instead of modifying the external header file.
 
-A Makefile with the following targets is required for each part:
+* A Makefile with the following targets is required for each part:
 
-  all: Makes all your system.
+  * all: Makes all your system.
 
-XXtest: Produces an executable file XXtest. We will provide a file XXtest.c for each layer, which contains a few test scenarios. However, we do not guarantee that the test scenarios will examine every aspect of your code, or that they will detect every bug in your code. We strongly suggest that you write your own test cases (perhaps based on ours) to test your code more thoroughly. We will use our own XXtest.c, different from the one provided, to test and grade your system.
+* XXtest: Produces an executable file XXtest. We will provide a file XXtest.c for each layer, which contains a few test scenarios. However, we do not guarantee that the test scenarios will examine every aspect of your code, or that they will detect every bug in your code. We strongly suggest that you write your own test cases (perhaps based on ours) to test your code more thoroughly. We will use our own XXtest.c, different from the one provided, to test and grade your system.
 
-libXX.a: Produces the XX layer function library.
+* libXX.a: Produces the XX layer function library.
 
-clean: Gets rid of *.o files, the libXX.a library and the executable XXtest.
+* clean: Gets rid of *.o files, the libXX.a library and the executable XXtest.
 
 The Makefile provided in the BF layer should be used as an example of how your Makefile for another layer should look. When grading, the TA will do the following:
 
@@ -51,11 +51,11 @@ The Makefile provided in the BF layer should be used as an example of how your M
         
 So, it is highly recommended that you try this yourself to make sure your Makefile works properly.
 
-Use the GNU gcc compiler version 4 or higher with -ansi -pedantic compilation switch for strict ANSI Standard C programming.
+* Use the GNU gcc compiler version 4 or higher with -ansi -pedantic compilation switch for strict ANSI Standard C programming.
 
-Note that part of your grade will depend on the clarity and documentation of your code. Source code documentation is very controversial. Use the source codes that are provided in the public directory as an example of the kind of documentation we expect. In general a description at the beginning of each function must be present. In this description, you must provide information about the parameters of the function, the value the function returns, and a general idea of what the function implements. Also comment major sections of code to describe what they are doing. Please choose meaningful names for your functions and variables, and use #define to identify any constants in your code. No Magic Numbers in your code!!
+* Note that part of your grade will depend on the clarity and documentation of your code. Source code documentation is very controversial. Use the source codes that are provided in the public directory as an example of the kind of documentation we expect. In general a description at the beginning of each function must be present. In this description, you must provide information about the parameters of the function, the value the function returns, and a general idea of what the function implements. Also comment major sections of code to describe what they are doing. Please choose meaningful names for your functions and variables, and use #define to identify any constants in your code. No Magic Numbers in your code!!
 
-A system report. This report should explain the implementation approach you followed, including overall techniques, important data structures, tricky design decisions, and anything else that you may want us to know. This report should be a short one (2-3 pages) but should be well written and spell-checked.
+* A system report. This report should explain the implementation approach you followed, including overall techniques, important data structures, tricky design decisions, and anything else that you may want us to know. This report should be a short one (2-3 pages) but should be well written and spell-checked.
 
 # 1.3. Project Groups
 
