@@ -13,9 +13,9 @@ Figure 1. MiniRel System Architecture
  
 When all the five parts of the MiniRel project are completed, the final deliverables will produce the followings:
 
-Three executables: dbcreate, dbdestroy and minirel,
+* Three executables: dbcreate, dbdestroy and minirel,
 
-Six function libraries: libbf.a, libpf.a, libhf.a, libam.a, libfe.a, and libparser.a.
+* Six function libraries: libbf.a, libpf.a, libhf.a, libam.a, libfe.a, and libparser.a.
 
 However, some of the deliverables may be provided or excluded from the scope of the project.
 
