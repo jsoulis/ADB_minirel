@@ -8,9 +8,9 @@ Throughout the semester, you will be working on a project to build a simplified 
 Part I (the BF layer) and Part II (the PF layer) involve the implementation of code to manage a buffer pool and to manipulate files that contain a sequence of pages, respectively. Part III (the HF layer) involves the implementation of heap file management to provide the abstraction of random and sequential access to fixed-length records stored in files. Part IV (the AM layer) involves implementing procedures for B^{+}-tree index structures to speed up associative access to records. For Part V (the FE layer), this layer implements catalog management, data definition language (DDL), and data manipulation language (DML). To help you implement the Part V quickly, a parser to parse user commands will be provided.
 
 ![minirel system architecture](https://github.com/gadimli93/ADB_minirel/blob/master/miniral%20system%20arch.JPG)
+
 Figure 1. MiniRel System Architecture
  
-
 When all the five parts of the MiniRel project are completed, the final deliverables will produce the followings:
 
 Three executables: dbcreate, dbdestroy and minirel,
