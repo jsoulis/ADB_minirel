@@ -37,11 +37,11 @@ You can copy everything in the public directory to your working directory, and m
 
   * all: Makes all your system.
 
-* XXtest: Produces an executable file XXtest. We will provide a file XXtest.c for each layer, which contains a few test scenarios. However, we do not guarantee that the test scenarios will examine every aspect of your code, or that they will detect every bug in your code. We strongly suggest that you write your own test cases (perhaps based on ours) to test your code more thoroughly. We will use our own XXtest.c, different from the one provided, to test and grade your system.
+  * XXtest: Produces an executable file XXtest. We will provide a file XXtest.c for each layer, which contains a few test scenarios. However, we do not guarantee that the test scenarios will examine every aspect of your code, or that they will detect every bug in your code. We strongly suggest that you write your own test cases (perhaps based on ours) to test your code more thoroughly. We will use our own XXtest.c, different from the one provided, to test and grade your system.
 
-* libXX.a: Produces the XX layer function library.
+  * libXX.a: Produces the XX layer function library.
 
-* clean: Gets rid of *.o files, the libXX.a library and the executable XXtest.
+  * clean: Gets rid of *.o files, the libXX.a library and the executable XXtest.
 
 The Makefile provided in the BF layer should be used as an example of how your Makefile for another layer should look. When grading, the TA will do the following:
 
