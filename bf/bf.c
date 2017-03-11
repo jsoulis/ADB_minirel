@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include "minirel.h"
 
@@ -87,7 +88,7 @@ void LRU_Remove(BFpage *page) {
 
   if (page->prevpage) {
     page->prevpage->nextpage = page->nextpage;
-  } 
+  }
   if (page->nextpage) {
     page->nextpage->prevpage = page->prevpage;
   }
@@ -99,11 +100,12 @@ void LRU_Remove(BFpage *page) {
  * writing to disk, and removes it from the hash table
  *
  * Returns BFE_INCOMPLETEWRITE on write error,
- * BFE_PAGEFIXED if no pages can be replaced, 
+ * BFE_PAGEFIXED if no pages can be replaced,
  * BFE_OK otherwise
  * Writes the cleared BFpage to *ret_bpage
  */
-int LRU_ClearLast(BFpage *lru_head, BFhash_entry **hash_table, BFpage **ret_bpage) {
+int LRU_ClearLast(BFpage *lru_head, BFhash_entry **hash_table,
+                  BFpage **ret_bpage) {
   BFpage *bpage = lru_head;
   /*
    * Find the least recently used object (the tail)
@@ -241,7 +243,7 @@ int BF_TouchBuf(BFreq bq) {
   }
 
   page->dirty = TRUE;
-  
+
   /* Add it to the front, because it's the most recently used element */
   LRU_Remove(page);
   LRU_Push(&lru_head, page);
@@ -277,4 +279,19 @@ int BF_FlushBuf(int fd) {
   }
 
   return BFE_OK;
+}
+
+void BF_ShowBuf(void) {
+  unsigned int i;
+  BFpage *bpage;
+
+  i = 0;
+  bpage = lru_head;
+
+  printf("Printing information about the LRU\n");
+  while (bpage) {
+    printf("%u [ fd: %i, unixfd: %i, dirty: %i ]", i++, bpage->fd,
+           bpage->unixfd, bpage->dirty);
+    bpage = bpage->nextpage;
+  }
 }
