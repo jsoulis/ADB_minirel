@@ -83,7 +83,11 @@ void HT_Add(BFhash_entry **table, BFpage *page) {
 
   entry = malloc(sizeof(BFhash_entry));
   initialize_entry(entry, page);
-  entry->preventry = prev;
+
+  if (prev) {
+    prev->nextentry = entry;
+    entry->preventry = prev;
+  }
 
   /* We have to write back the entry if it's the first element */
   if (table[index] == NULL) {
