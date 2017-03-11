@@ -2,7 +2,7 @@
 LIB	= bf
 INCDIR	= ${MINIREL_HOME}/h
 INCS	= 
-SRCS	= ${MINIREL_HOME}/bf/bf.c
+SRCS	= ${MINIREL_HOME}/bf/bf.c ${MINIREL_HOME}/bf/hash_table.c
 TESTS	= bftest.c
 OBJS	= ${SRCS:.c=.o}
 LIBS	= lib${LIB}.a
