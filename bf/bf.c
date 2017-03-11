@@ -196,3 +196,30 @@ int BF_UnpinBuf(BFreq bq) {
   --(page->count);
   return BFE_OK;
 }
+
+int BF_TouchBuf(BFreq bq) {
+  BFpage *page = HT_Find(hash_table, bq.fd, bq.pagenum);
+
+  if (!page) {
+    return BFE_PAGENOTINBUF;
+  }
+
+  if (page->count <= 0) {
+    return BFE_PAGENOTPINNED;
+  }
+
+  page->dirty = TRUE;
+  
+  /* Remove element from LRU */
+  if (page->prevpage) {
+    page->prevpage = page->nextpage;
+  } 
+  if (page->nextpage) {
+    page->nextpage = page->prevpage;
+  }
+
+  /* And now add it to the front */
+  LRU_Push(&lru_head, page);
+
+  return BFE_OK;
+}
