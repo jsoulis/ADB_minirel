@@ -109,6 +109,12 @@ void HT_Remove(BFhash_entry **table, int fd, int pagenum) {
       if (entry->nextentry) {
         entry->nextentry->preventry = entry->preventry;
       }
+      
+      /* If it's the first element we have to update the table head */
+      if (entry == table[index]) {
+        table[index] = entry->nextentry;
+      }
+
       free(entry);
       break;
     }

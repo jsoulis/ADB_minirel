@@ -301,7 +301,7 @@ void BF_ShowBuf(void) {
 
   printf("Printing information about the LRU\n");
   while (bpage) {
-    printf("%u [ fd: %i, unixfd: %i, dirty: %i ]", i++, bpage->fd,
+    printf("%u [ fd: %i, unixfd: %i, dirty: %i ]\n", i++, bpage->fd,
            bpage->unixfd, bpage->dirty);
     bpage = bpage->nextpage;
   }
