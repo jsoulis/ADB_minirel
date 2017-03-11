@@ -1,5 +1,5 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "minirel.h"
 
@@ -301,8 +301,8 @@ void BF_ShowBuf(void) {
 
   printf("Printing information about the LRU\n");
   while (bpage) {
-    printf("%u [ fd: %i, unixfd: %i, dirty: %i ]\n", i++, bpage->fd,
-           bpage->unixfd, bpage->dirty);
+    printf("%u [ fd: %i, pagenum: %i, unixfd: %i, dirty: %i ]\n", i++,
+           bpage->fd, bpage->pagenum, bpage->unixfd, bpage->dirty);
     bpage = bpage->nextpage;
   }
 }
