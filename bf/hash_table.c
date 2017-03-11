@@ -70,23 +70,24 @@ void initialize_entry(BFhash_entry *entry, BFpage *page) {
 }
 
 void HT_Add(BFhash_entry **table, BFpage *page) {
-  BFhash_entry *entry;
+  BFhash_entry *entry, *prev;
   const unsigned int index = HT_Index(page->fd, page->pagenum);
 
   entry = table[index];
+  prev = NULL;
 
-  if (!entry) {
-    initialize_entry(entry, page);
-  } else {
-    /* Go to end of list */
-    while (entry->nextentry) {
-      entry = entry->nextentry;
-    }
+  while (entry) {
+    prev = entry;
+    entry = entry->nextentry;
+  }
 
-    entry->nextentry = malloc(sizeof(BFhash_entry));
-    initialize_entry(entry->nextentry, page);
+  entry = malloc(sizeof(BFhash_entry));
+  initialize_entry(entry, page);
+  entry->preventry = prev;
 
-    entry->nextentry->preventry = entry;
+  /* We have to write back the entry if it's the first element */
+  if (table[index] == NULL) {
+    table[index] = entry;
   }
 }
 
@@ -104,7 +105,7 @@ void HT_Remove(BFhash_entry **table, int fd, int pagenum) {
       if (entry->nextentry) {
         entry->nextentry->preventry = entry->preventry;
       }
-
+      free(entry);
       break;
     }
   }

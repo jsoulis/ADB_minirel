@@ -77,7 +77,9 @@ int initialize_bpage(BFreq bq, BFpage *page) {
 void LRU_Push(BFpage **head, BFpage *new_node) {
   /* Update LRU. The least recently used element is at the front */
   new_node->nextpage = *head;
-  (*head)->prevpage = new_node;
+  if (*head) {
+    (*head)->prevpage = new_node;
+  }
   *head = new_node;
 }
 
