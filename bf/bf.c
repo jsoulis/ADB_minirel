@@ -67,3 +67,15 @@ void BF_Init(void) {
   free_list = FL_Init(BF_MAX_BUFS);
   hash_table = HT_Init(BF_HASH_TBL_SIZE);
 }
+
+int BF_GetBuf(BFreq bq, PFpage **fpage) {
+  BFpage *bpage;
+
+  bpage = HT_Find(hash_table, bq.fd, bq.pagenum);
+  if (bpage) {
+    *fpage = &bpage->fpage;
+    return BFE_OK;
+  }
+
+  return BFE_NOBUF;
+}
