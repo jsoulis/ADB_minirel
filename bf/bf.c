@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <unistd.h>
 #include "minirel.h"
 
 #include "bf.h"
@@ -39,8 +40,9 @@ void FL_Clean(BFpage *node) {
 }
 
 /* Variables */
-BFpage *free_list;
-BFhash_entry *hash_table;
+BFpage *free_list_head;
+BFpage *lru_head;
+BFhash_entry **hash_table;
 
 /* API implementations */
 
@@ -48,16 +50,46 @@ BFhash_entry *hash_table;
  * Should initialize the structures, FreeList and HashTable
  */
 void BF_Init(void) {
-  free_list = FL_Init(BF_MAX_BUFS);
+  free_list_head = FL_Init(BF_MAX_BUFS);
   hash_table = HT_Init(BF_HASH_TBL_SIZE);
+}
+
+int initialize_bpage(BFreq bq, BFpage *page) {
+  page->dirty = FALSE;
+  page->count = 1;
+  page->fd = bq.fd;
+  page->pagenum = bq.pagenum;
+
+  /* Read page data from an offset. It assumes that pagenum is zero-indexed */
+  lseek(bq.unixfd, (PAGE_SIZE * bq.pagenum), SEEK_SET);
+  return read(bq.unixfd, page->fpage.pagebuf, PAGE_SIZE);
 }
 
 int BF_GetBuf(BFreq bq, PFpage **fpage) {
   BFpage *bpage;
 
+  /* First look in the hash table */
   bpage = HT_Find(hash_table, bq.fd, bq.pagenum);
   if (bpage) {
+    ++bpage->count;
     *fpage = &bpage->fpage;
+
+    return BFE_OK;
+  }
+
+  /* if there is available space in FreeList just use that */
+  if (free_list_head) {
+    /* Pop an element from the free_list */
+    bpage = free_list_head;
+    free_list_head = bpage->nextpage;
+
+    initialize_bpage(bq, bpage);
+    /* Update LRU. The least recently used element is at the front */
+    bpage->nextpage = lru_head;
+    lru_head->prevpage = bpage;
+
+    HT_Add(hash_table, bpage);
+
     return BFE_OK;
   }
 

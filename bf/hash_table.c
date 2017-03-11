@@ -3,38 +3,37 @@
 #include "bf.h"
 #include <stdlib.h>
 
-BFhash_entry *HT_Init(unsigned int size) {
+BFhash_entry **HT_Init(unsigned int size) {
   unsigned int i;
-  BFhash_entry *entry_array;
+  BFhash_entry **table;
 
-  entry_array = malloc(sizeof(BFhash_entry) * size);
+  table = malloc(sizeof(BFhash_entry*) * size);
 
   for (i = 0; i < size; ++i) {
-    entry_array[i].nextentry = NULL;
-    entry_array[i].preventry = NULL;
-    entry_array[i].bpage = NULL;
+    table[i] = NULL;
   }
 
-  return entry_array;
+  return table;
 }
 
 /* Will only clean up hash entries, not buffer pages */
-void HT_Clean(BFhash_entry *entry_array, unsigned int size) {
+void HT_Clean(BFhash_entry **table, unsigned int size) {
   unsigned int i;
   BFhash_entry *this, *next;
 
   for (i = 0; i < size; ++i) {
-    /* Don't free head, we'll free all heads at the same time at the end */
-    this = entry_array[i].nextentry;
+    if (table[i] != NULL) {
+      this = table[i];
 
-    while (this) {
-      next = this->nextentry;
-      free(this);
-      this = next;
+      while (this) {
+        next = this->nextentry;
+        free(this);
+        this = next;
+      }
     }
   }
 
-  free(entry_array);
+  free(table);
 }
 
 /*
@@ -46,12 +45,13 @@ unsigned int HT_Index(int fd, int pagenum) {
 }
 
 /* Will return the given object, NULL otherwise */
-BFpage *HT_Find(BFhash_entry *table, int fd, int pagenum) {
+BFpage *HT_Find(BFhash_entry **table, int fd, int pagenum) {
   unsigned int index;
   BFhash_entry *entry;
 
   index = HT_Index(fd, pagenum);
-  entry = &(table[index]);
+  entry = table[index];
+
   while (entry) {
     if (entry->fd == fd && entry->pagenum == pagenum) return entry->bpage;
 
@@ -59,4 +59,33 @@ BFpage *HT_Find(BFhash_entry *table, int fd, int pagenum) {
   }
 
   return NULL;
+}
+
+void initialize_entry(BFhash_entry *entry, BFpage *page) {
+  entry->bpage = page;
+  entry->fd = page->fd;
+  entry->pagenum = page->pagenum;
+  entry->preventry = NULL;
+  entry->nextentry = NULL;
+}
+
+void HT_Add(BFhash_entry **table, BFpage *page) {
+  BFhash_entry *entry;
+  const unsigned int index = HT_Index(page->fd, page->pagenum);
+
+  entry = table[index];
+
+  if (!entry) {
+    initialize_entry(entry, page);
+  } else {
+    /* Go to end of list */
+    while (entry->nextentry) {
+      entry = entry->nextentry;
+    }
+
+    entry->nextentry = malloc(sizeof(BFhash_entry));
+    initialize_entry(entry->nextentry, page);
+
+    entry->nextentry->preventry = entry;
+  }
 }

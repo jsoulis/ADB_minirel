@@ -12,10 +12,10 @@ typedef struct BFhash_entry {
 
 /* HashTable functions */
 
-BFhash_entry *HT_Init(unsigned int size);
+BFhash_entry **HT_Init(unsigned int size);
 
 /* Will only clean up hash entries, not buffer pages */
-void HT_Clean(BFhash_entry *entry_array, unsigned int size);
+void HT_Clean(BFhash_entry **table, unsigned int size);
 
 /*
  * Returns the index in the hash table of the given fd and pagenum
@@ -24,6 +24,8 @@ void HT_Clean(BFhash_entry *entry_array, unsigned int size);
 unsigned int HT_Index(int fd, int pagenum);
 
 /* Will return the given object, NULL otherwise */
-BFpage *HT_Find(BFhash_entry *table, int fd, int pagenum);
+BFpage *HT_Find(BFhash_entry **table, int fd, int pagenum);
+
+void HT_Add(BFhash_entry **table, BFpage *page);
 
 #endif
