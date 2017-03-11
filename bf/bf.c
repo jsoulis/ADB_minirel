@@ -47,6 +47,11 @@ BFpage *FL_Pop(BFpage **head) {
   return page;
 }
 
+void FL_Push(BFpage **head, BFpage *page) {
+  page->nextpage = *head;
+  *head = page;
+}
+
 /* Local functions */
 
 void initialize_bpage_no_read(BFreq bq, BFpage *page) {
@@ -240,6 +245,36 @@ int BF_TouchBuf(BFreq bq) {
   /* Add it to the front, because it's the most recently used element */
   LRU_Remove(page);
   LRU_Push(&lru_head, page);
+
+  return BFE_OK;
+}
+
+int BF_FlushBuf(int fd) {
+  BFpage *bpage, *next;
+
+  bpage = lru_head;
+
+  while (bpage) {
+    next = bpage->nextpage;
+
+    if (bpage->fd == fd) {
+      if (bpage->count > 0) {
+        return BFE_PAGEFIXED;
+      }
+
+      if (bpage->dirty) {
+        lseek(bpage->unixfd, (PAGE_SIZE * bpage->pagenum), SEEK_SET);
+        if (write(bpage->unixfd, bpage->fpage.pagebuf, PAGE_SIZE) == -1) {
+          return BFE_INCOMPLETEWRITE;
+        }
+      }
+
+      LRU_Remove(bpage);
+      FL_Push(&free_list_head, bpage);
+    }
+
+    bpage = next;
+  }
 
   return BFE_OK;
 }
