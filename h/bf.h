@@ -34,7 +34,6 @@ void BF_ShowBuf(void);
 #define BFE_NOBUF		(-2)
 #define BFE_PAGEFIXED		(-3)
 #define BFE_PAGEUNFIXED		(-4)
-#define BFE_PAGENOTPINNED (-5)
 
 #define BFE_PAGEINBUF		(-50)
 #define BFE_PAGENOTINBUF	(-51)

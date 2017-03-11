@@ -3,7 +3,6 @@
 
 #include "minirel.h"
 
-/* Buffer page from documentation */
 typedef struct BFpage {
   PFpage fpage;            /* page data from the file                 */
   struct BFpage *nextpage; /* next in the linked list of buffer pages */
@@ -12,6 +11,7 @@ typedef struct BFpage {
   short count;             /* pin count associated with the page      */
   int pagenum;             /* page number of this page                */
   int fd;                  /* PF file descriptor of this page         */
+  int unixfd;              /* Need to also save the unix fd for when writing back dirty pages */
 } BFpage;
 
 #endif

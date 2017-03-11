@@ -53,6 +53,7 @@ void initialize_bpage_no_read(BFreq bq, BFpage *page) {
   page->dirty = FALSE;
   page->count = 1;
   page->fd = bq.fd;
+  page->unixfd = bq.unixfd;
   page->pagenum = bq.pagenum;
   page->nextpage = NULL;
   page->prevpage = NULL;
@@ -74,15 +75,30 @@ void LRU_Push(BFpage **head, BFpage *new_node) {
   *head = new_node;
 }
 
+void LRU_Remove(BFpage *page) {
+  if (!page) {
+    return;
+  }
+
+  if (page->prevpage) {
+    page->prevpage->nextpage = page->nextpage;
+  } 
+  if (page->nextpage) {
+    page->nextpage->prevpage = page->prevpage;
+  }
+}
+
 /*
  * This function does a bit more than the name suggests
  * It handles everything regarding removing an element from the LRU,
  * writing to disk, and removes it from the hash table
  *
- * Returns -1 on write error, 0 otherwise
+ * Returns BFE_INCOMPLETEWRITE on write error,
+ * BFE_PAGEFIXED if no pages can be replaced, 
+ * BFE_OK otherwise
  * Writes the cleared BFpage to *ret_bpage
  */
-int LRU_ClearLast(BFpage *lru_head, BFhash_entry **hash_table, BFreq bq, BFpage **ret_bpage) {
+int LRU_ClearLast(BFpage *lru_head, BFhash_entry **hash_table, BFpage **ret_bpage) {
   BFpage *bpage = lru_head;
   /*
    * Find the least recently used object (the tail)
@@ -92,19 +108,26 @@ int LRU_ClearLast(BFpage *lru_head, BFhash_entry **hash_table, BFreq bq, BFpage 
     bpage = bpage->nextpage;
   }
 
+  /* We need to find a page that's not pinned */
+  while (bpage->count > 0 && bpage) {
+    bpage = bpage->prevpage;
+  }
+
+  if (!bpage) {
+    return BFE_PAGEFIXED;
+  }
+
   /* Only have to write if the page is dirty */
   if (bpage->dirty) {
-    lseek(bq.unixfd, (PAGE_SIZE * bq.pagenum), SEEK_SET);
-    if (write(bq.unixfd, bpage->fpage.pagebuf, PAGE_SIZE) == -1) {
+    lseek(bpage->unixfd, (PAGE_SIZE * bpage->pagenum), SEEK_SET);
+    if (write(bpage->unixfd, bpage->fpage.pagebuf, PAGE_SIZE) == -1) {
       return BFE_INCOMPLETEWRITE;
     }
   }
 
   HT_Remove(hash_table, bpage->fd, bpage->pagenum);
 
-  /* Remove from the end of LRU */
-  bpage->prevpage->nextpage = NULL;
-  bpage->prevpage = NULL;
+  LRU_Remove(bpage);
 
   *ret_bpage = bpage;
   return 0;
@@ -127,6 +150,7 @@ void BF_Init(void) {
 
 int BF_GetBuf(BFreq bq, PFpage **fpage) {
   BFpage *bpage;
+  int error_value;
 
   /* First look in the hash table */
   bpage = HT_Find(hash_table, bq.fd, bq.pagenum);
@@ -138,8 +162,9 @@ int BF_GetBuf(BFreq bq, PFpage **fpage) {
       bpage = FL_Pop(&free_list_head);
     } else {
       /* Will set bpage to the now cleared page */
-      if (LRU_ClearLast(lru_head, hash_table, bq, &bpage) == -1) {
-        return BFE_INCOMPLETEWRITE;
+      error_value = LRU_ClearLast(lru_head, hash_table, &bpage);
+      if (error_value != BFE_OK) {
+        return error_value;
       }
     }
 
@@ -157,6 +182,7 @@ int BF_GetBuf(BFreq bq, PFpage **fpage) {
 
 int BF_AllocBuf(BFreq bq, PFpage **fpage) {
   BFpage *bpage;
+  int error_value;
 
   bpage = HT_Find(hash_table, bq.fd, bq.pagenum);
   /* Since we're allocating a new block, there shouldn't exist one currently */
@@ -167,8 +193,9 @@ int BF_AllocBuf(BFreq bq, PFpage **fpage) {
   if (free_list_head) {
     bpage = FL_Pop(&free_list_head);
   } else {
-    if (LRU_ClearLast(lru_head, hash_table, bq, &bpage) == -1) {
-      return BFE_INCOMPLETEWRITE;
+    error_value = LRU_ClearLast(lru_head, hash_table, &bpage);
+    if (error_value != BFE_OK) {
+      return error_value;
     }
   }
 
@@ -190,7 +217,7 @@ int BF_UnpinBuf(BFreq bq) {
   }
 
   if (page->count <= 0) {
-    return BFE_PAGENOTPINNED;
+    return BFE_PAGEUNFIXED;
   }
 
   --(page->count);
@@ -205,20 +232,13 @@ int BF_TouchBuf(BFreq bq) {
   }
 
   if (page->count <= 0) {
-    return BFE_PAGENOTPINNED;
+    return BFE_PAGEUNFIXED;
   }
 
   page->dirty = TRUE;
   
-  /* Remove element from LRU */
-  if (page->prevpage) {
-    page->prevpage = page->nextpage;
-  } 
-  if (page->nextpage) {
-    page->nextpage = page->prevpage;
-  }
-
-  /* And now add it to the front */
+  /* Add it to the front, because it's the most recently used element */
+  LRU_Remove(page);
   LRU_Push(&lru_head, page);
 
   return BFE_OK;
