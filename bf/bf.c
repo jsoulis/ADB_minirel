@@ -4,50 +4,34 @@
 #include "bf.h"
 #include "hash_table.h"
 
-/* Local structures */
-
-
-/* FreeListNode */
-typedef struct FL_Node {
-  struct FL_Node *next; /* should be NULL if no next element */
-  BFpage *page;
-} FL_Node;
-
-typedef struct LRU_Node {
-  struct LRU_Node *prev, *next; /* should be NULL if no next/prev element*/
-  BFpage *page;
-} LRU_Node;
-
-/* Local functions */
-
 /* FreeList functions */
 
 /* Will initialize the list and the buffer pages */
-FL_Node *FL_Init(unsigned int size) {
+BFpage *FL_Init(unsigned int size) {
   unsigned int i;
-  FL_Node *head, *node;
+  BFpage *head, *node;
 
-  head = node = malloc(sizeof(FL_Node));
+  head = node = malloc(sizeof(BFpage));
 
   for (i = 1; i < size; ++i) {
-    node->next = malloc(sizeof(FL_Node));
-    node->page = malloc(sizeof(BFpage));
-    node = node->next;
+    node->nextpage = malloc(sizeof(BFpage));
+
+    node = node->nextpage;
   }
 
-  node->next = NULL;
+  node->nextpage = NULL;
 
   return head;
 }
 
 /* Cleans up any remaining buffer pages and the list itself */
-void FL_Clean(FL_Node *node) {
-  FL_Node *next;
+void FL_Clean(BFpage *node) {
+  BFpage *next;
 
   while (node) {
-    next = node->next;
+    next = node->nextpage;
 
-    free(node->page);
+    free(node->nextpage);
     free(node);
 
     node = next;
@@ -55,7 +39,7 @@ void FL_Clean(FL_Node *node) {
 }
 
 /* Variables */
-FL_Node *free_list;
+BFpage *free_list;
 BFhash_entry *hash_table;
 
 /* API implementations */
