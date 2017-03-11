@@ -27,5 +27,6 @@ unsigned int HT_Index(int fd, int pagenum);
 BFpage *HT_Find(BFhash_entry **table, int fd, int pagenum);
 
 void HT_Add(BFhash_entry **table, BFpage *page);
+void HT_Remove(BFhash_entry **table, int fd, int pagenum);
 
 #endif

@@ -89,3 +89,23 @@ void HT_Add(BFhash_entry **table, BFpage *page) {
     entry->nextentry->preventry = entry;
   }
 }
+
+void HT_Remove(BFhash_entry **table, int fd, int pagenum) {
+  BFhash_entry *entry;
+  const unsigned int index = HT_Index(fd, pagenum);
+
+  entry = table[index];
+
+  while (entry) {
+    if (entry->fd == fd && entry->pagenum == pagenum) {
+      if (entry->preventry) {
+        entry->preventry->nextentry = entry->nextentry;
+      }
+      if (entry->nextentry) {
+        entry->nextentry->preventry = entry->preventry;
+      }
+
+      break;
+    }
+  }
+}
