@@ -10,7 +10,7 @@ LIBS	= lib${LIB}.a
 #############################################################################
 # This macro definition can be overwritten by command-line definitions.
 CC	= gcc
-CFLAGS	= -g -ansi -pedantic
+CFLAGS	= -g -ansi -pedantic -Wall -Wextra -Werror
 #CFLAGS	= -O -ansi -pedantic
 #############################################################################
 
