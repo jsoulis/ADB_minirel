@@ -26,7 +26,7 @@ void writefile(char *fname)
 {
     PFpage *fpage;
     int i;
-    int fd,unixfd,pagenum;
+    int unixfd;
     int error;
 
     /* open file1 */
@@ -184,11 +184,7 @@ void printfile(char *fname)
  */
 void testpf1(void)
 {
-    int		i, error, pagenum;
-    char*	buf;
-    int		fd1, fd2;
     char        command[128];
-    int temp;
 
     /* Making sure file don't exist */
     unlink(FILE1);
@@ -228,7 +224,7 @@ void testpf1(void)
 */
 }
 
-main()
+int main()
 {
   /* initialize PF layer */
   BF_Init();
@@ -236,5 +232,6 @@ main()
   printf("\n************* Starting testpf1 *************\n");
   testpf1(); 
   printf("\n************* End testpf1 ******************\n");
+  return 0;
 }
 
