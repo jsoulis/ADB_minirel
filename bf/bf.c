@@ -74,8 +74,13 @@ int initialize_bpage(BFreq bq, BFpage *page) {
   return read(bq.unixfd, page->fpage.pagebuf, PAGE_SIZE);
 }
 
+/* Update LRU. The most recently used element is at the front */
 void LRU_Push(BFpage **head, BFpage *new_node) {
-  /* Update LRU. The least recently used element is at the front */
+  /* If the most recently used element is already at the front, do nothing */
+  if (*head == new_node) {
+    return;
+  }
+
   new_node->nextpage = *head;
   if (*head) {
     (*head)->prevpage = new_node;
@@ -83,9 +88,13 @@ void LRU_Push(BFpage **head, BFpage *new_node) {
   *head = new_node;
 }
 
-void LRU_Remove(BFpage *page) {
+void LRU_Remove(BFpage **head, BFpage *page) {
   if (!page) {
     return;
+  }
+
+  if (*head == page) {
+    *head = page->nextpage;
   }
 
   if (page->prevpage) {
@@ -136,7 +145,7 @@ int LRU_ClearLast(BFpage *lru_head, BFhash_entry **hash_table,
 
   HT_Remove(hash_table, bpage->fd, bpage->pagenum);
 
-  LRU_Remove(bpage);
+  LRU_Remove(&lru_head, bpage);
 
   *ret_bpage = bpage;
   return 0;
@@ -247,7 +256,7 @@ int BF_TouchBuf(BFreq bq) {
   page->dirty = TRUE;
 
   /* Add it to the front, because it's the most recently used element */
-  LRU_Remove(page);
+  LRU_Remove(&lru_head, page);
   LRU_Push(&lru_head, page);
 
   return BFE_OK;
@@ -273,7 +282,7 @@ int BF_FlushBuf(int fd) {
         }
       }
 
-      LRU_Remove(bpage);
+      LRU_Remove(&lru_head, bpage);
       FL_Push(&free_list_head, bpage);
     }
 
