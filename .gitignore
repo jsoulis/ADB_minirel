@@ -1,3 +1,5 @@
 *.o
 *.a
 
+bf/bftest
+bf/file1
