@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -92,8 +93,9 @@ void readfile(char *fname) {
   int fd, pagenum;
   PFpage *fpage;
 
-  if ((unixfd = open(fname, O_RDWR)) < 0) {
+  if ((unixfd = open(fname, O_RDONLY)) < 0) {
     printf("open failed: %s", fname);
+    printf("\n%s\n", strerror(errno));
     exit(-1);
   }
 
