@@ -181,3 +181,18 @@ int BF_AllocBuf(BFreq bq, PFpage **fpage) {
   *fpage = &bpage->fpage;
   return BFE_OK;
 }
+
+int BF_UnpinBuf(BFreq bq) {
+  BFpage *page = HT_Find(hash_table, bq.fd, bq.pagenum);
+
+  if (!page) {
+    return BFE_PAGENOTINBUF;
+  }
+
+  if (page->count <= 0) {
+    return BFE_PAGENOTPINNED;
+  }
+
+  --(page->count);
+  return BFE_OK;
+}
