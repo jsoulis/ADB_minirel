@@ -1,13 +1,13 @@
 #include "hash_table.h"
 
-#include "bf.h"
 #include <stdlib.h>
+#include "bf.h"
 
 BFhash_entry **HT_Init(unsigned int size) {
   unsigned int i;
   BFhash_entry **table;
 
-  table = malloc(sizeof(BFhash_entry*) * size);
+  table = malloc(sizeof(BFhash_entry *) * size);
 
   for (i = 0; i < size; ++i) {
     table[i] = NULL;
@@ -53,7 +53,9 @@ BFpage *HT_Find(BFhash_entry **table, int fd, int pagenum) {
   entry = table[index];
 
   while (entry) {
-    if (entry->fd == fd && entry->pagenum == pagenum) return entry->bpage;
+    if (entry->fd == fd && entry->pagenum == pagenum) {
+      return entry->bpage;
+    }
 
     entry = entry->nextentry;
   }
@@ -109,7 +111,7 @@ void HT_Remove(BFhash_entry **table, int fd, int pagenum) {
       if (entry->nextentry) {
         entry->nextentry->preventry = entry->preventry;
       }
-      
+
       /* If it's the first element we have to update the table head */
       if (entry == table[index]) {
         table[index] = entry->nextentry;

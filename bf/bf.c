@@ -1,7 +1,7 @@
+#include "minirel.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "minirel.h"
 
 #include "bf.h"
 #include "hash_table.h"
