@@ -282,7 +282,9 @@ int BF_FlushBuf(int fd) {
         }
       }
 
+      HT_Remove(hash_table, bpage->fd, bpage->pagenum);
       LRU_Remove(&lru_head, bpage);
+
       FL_Push(&free_list_head, bpage);
     }
 
@@ -299,10 +301,11 @@ void BF_ShowBuf(void) {
   i = 0;
   bpage = lru_head;
 
-  printf("Printing information about the LRU\n");
+  printf("\n\tPrinting information about the LRU\n\n");
   while (bpage) {
     printf("%u [ fd: %i, pagenum: %i, unixfd: %i, dirty: %i ]\n", i++,
            bpage->fd, bpage->pagenum, bpage->unixfd, bpage->dirty);
     bpage = bpage->nextpage;
   }
+  printf("\n\n\tFinished printing information about the LRU\n");
 }

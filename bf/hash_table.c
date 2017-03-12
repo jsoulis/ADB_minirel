@@ -118,5 +118,7 @@ void HT_Remove(BFhash_entry **table, int fd, int pagenum) {
       free(entry);
       break;
     }
+
+    entry = entry->nextentry;
   }
 }
