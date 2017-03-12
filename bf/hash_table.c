@@ -1,7 +1,7 @@
 #include "hash_table.h"
 
-#include <stdlib.h>
 #include "bf.h"
+#include <stdlib.h>
 
 BFhash_entry **HT_Init(unsigned int size) {
   unsigned int i;
