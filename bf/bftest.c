@@ -9,7 +9,6 @@
 #include "minirel.h"
 
 #include "bf.h"
-#include "buf.h"
 
 /*
  * default files
