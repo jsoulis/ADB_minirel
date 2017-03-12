@@ -5,53 +5,7 @@
 
 #include "bf.h"
 #include "hash_table.h"
-
-/* FreeList functions */
-
-/* Will initialize the list and the buffer pages */
-BFpage *FL_Init(unsigned int size) {
-  unsigned int i;
-  BFpage *head, *node;
-
-  head = node = malloc(sizeof(BFpage));
-
-  for (i = 1; i < size; ++i) {
-    node->nextpage = malloc(sizeof(BFpage));
-
-    node = node->nextpage;
-  }
-
-  node->nextpage = NULL;
-
-  return head;
-}
-
-/* Cleans up any remaining buffer pages and the list itself */
-void FL_Clean(BFpage *node) {
-  BFpage *next;
-
-  while (node) {
-    next = node->nextpage;
-
-    free(node->nextpage);
-    free(node);
-
-    node = next;
-  }
-}
-
-/* Pops the first element and updates the head */
-BFpage *FL_Pop(BFpage **head) {
-  BFpage *page = *head;
-  *(head) = page->nextpage;
-
-  return page;
-}
-
-void FL_Push(BFpage **head, BFpage *page) {
-  page->nextpage = *head;
-  *head = page;
-}
+#include "free_list.h"
 
 /* Local functions */
 
