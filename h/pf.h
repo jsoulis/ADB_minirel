@@ -8,7 +8,7 @@
  /*
  * size of open file table
  */
-#define PF_FTAB_SIZE	20
+#define PF_FTAB_SIZE	MAXOPENFILES
 
 /*
  * prototypes for PF-layer functions
