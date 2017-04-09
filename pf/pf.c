@@ -1,6 +1,9 @@
 #include "minirel.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <fcntl.h>
 
 #include "pf.h"
 #include "pf_datastruct.h"
@@ -13,8 +16,7 @@ static PFftab_ele PFftab[PF_FTAB_SIZE];
 
 /* find the index to PF file table entry whose "filename" field is same as "filename" */
 
-static PFtabFindFilename(filename)
-char *filename;  /* file name need to be found */
+static PFtabFindFilename(char *filename)
 { 
 int i;
 
@@ -26,10 +28,7 @@ int i;
         return(-1);
 }
 /* read function*/
-PFreadfunc(fd,pagenum,buf)
-int fd; /* file descriptor */
-int pagenum; /* page number */
-PFpage *buf;
+PFreadfunc(int fd, int pagenum, PFpage *buf)
 {
 int error_value;
 
@@ -50,11 +49,7 @@ int error_value;
 
         return(PFE_OK);
 }
-PFwritefunc(fd,pagenum,buf)
-int fd;         /* file descriptor */
-int pagenum;    /* page to read */
-PFpage *buf;   /* buffer where to read the page */
-
+PFwritefunc(int fd, int pagenum, PFpage *buf)
 {
 int error_value;
 
@@ -96,9 +91,7 @@ int i;
 	}
 }
 /* create a file named filename. the file should not have already existed */
-int PF_CreateFile(filename) {
-char *filename;	/* name of file to be created */
-
+int PF_CreateFile(char *filename) {
 int fd;	/* unix file descripotr */
 PFhdr_str hdr;	/* file header */
 int error_value;
@@ -131,12 +124,10 @@ int error_value;
 	return(PFE_OK);
 }
  /* destroy the file filename. the file shoudl have existed and should not be opened */
-int PF_DestroyFile(filename) {
-char *filename;		/* file name to be destroyed */
-
+int PF_DestroyFile(char *filename) {
 int error_value;
 
-        if (PFtabFindFname(filename)!= -1){
+        if (PFtabFindFilename(filename)!= -1){
                 /* file is open */
                 PFerrno = PFE_FILEOPEN;
                 return(PFerrno);
@@ -155,10 +146,7 @@ int error_value;
 
 /* open the file named filename */
 
-int PF_OpenFile(filename) {
-char *filename;            /* name of the file to open */
-
-
+int PF_OpenFile(char *filename) {
 int count;      /* number of bytes in read */
 int fd;
 
@@ -190,21 +178,20 @@ int fd;
         PFftab[fd].hdrchanged = FALSE;
 
 /* save the file name */
-        if ((PFftab[fd].filename = savestr(filename)) == NULL){
+        if (filename == NULL){
 
 close(PFftab[fd].unixfd);
 /* no space */
                 PFerrno = PFE_FTABFULL;
                 return(PFerrno);
         }
+        strcpy(PFftab[fd].fname, filename);
 
         return(fd);
 }
 
 /* close the file associated with PF file descriptor fd*/
-int PF_CloseFile(fd) {
-int fd;         /* file descriptor to close */
-
+int PF_CloseFile(int fd) {
 int error_value;
 
 	if (PFinvalidFd(fd)){
@@ -248,11 +235,7 @@ int error_value;
 	return(PFE_OK);
 }
 /* allocate a new page for fd  */
-int PF_AllocPage(fd, pageNum, pagebuf) {
-int fd;       
-int *pageNum;   /* return the number of the page allocated*/
-char **pagebuf; /* return a pointer to the page content */
- 
+int PF_AllocPage(int fd, int *pagenum, char **pagebuf) {
  PFpage *fpage; /* pointer to file page */
 int error_value;
  
@@ -264,8 +247,8 @@ int error_value;
         if (PFftab[fd].hdr.firstfree != PF_PAGE_LIST_END) {
 
 /* get a page from the free list */
-                 *pageNum = PFftab[fd].hdr.firstfree;
-                if ((error_value=BF_GetBuf(fd,*pageNum,&fpage,PFreadfunc,
+                 *pagenum = PFftab[fd].hdr.firstfree;
+                if ((error_value=BF_GetBuf(fd,*pagenum,&fpage,PFreadfunc,
                                          PFwritefunc))!= PFE_OK)
 /* can't get the page */
                         return(error_value);
@@ -275,8 +258,8 @@ int error_value;
          else {
 
 /* free list empty, allocate one more page from t    he file */
-                 *pageNum = PFftab[fd].hdr.numpages;
-                if ((error_value=BF_AllocBuf(fd,*pageNum,&fpage,PFwritefunc ) ) != PFE_OK)          
+                 *pagenum = PFftab[fd].hdr.numpages;
+                if ((error_value=BF_AllocBuf(fd,*pagenum,&fpage,PFwritefunc ) ) != PFE_OK)          
 
 /* can't allocate a page */
                  return(error_value);
@@ -286,7 +269,7 @@ int error_value;
                  PFftab[fd].hdrchanged = TRUE;
  
 /* mark this page dirty */
-                if ((error_value=BF_TouchBuf(fd,*pageNum))!= PFE_OK){
+                if ((error_value=BF_TouchBuf(fd,*pagenum))!= PFE_OK){
                         printf("internal error: PFalloc()\n");
                         exit(1); 
                 }
@@ -301,11 +284,7 @@ int error_value;
 }
 
 /* */
-int PF_GetNextPage(fd,pageNum,pagebuf) {
-int fd;	
-int *pageNum;	/* return the number of the next page */
-char **pagebuf;	/* return a pointer to the page content */
-
+int PF_GetNextPage(int fd, int *pagenum, char **pagebuf) {
 int tmppage;	/* page number to scan for next valid page */
 int error_value;	/* error code */
 PFpage *fpage;	/* pointer to file page */
@@ -314,26 +293,26 @@ PFpage *fpage;	/* pointer to file page */
 		PFerrno = PFE_FD;
 		return(PFerrno);
 	}
-	if (*pageNum < -1 || *pageNum >= PFftab[fd].hdr.numpages){
+	if (*pagenum < -1 || *pagenum >= PFftab[fd].hdr.numpages){
 		PFerrno = PFE_INVALIDPAGE;
 		return(PFerrno);
 	}
 
 /* scan the file until a valid used page is found */
-	for (tmppage= *pageNum+1;tmppage<PFftab[fd].hdr.numpages;tmppage++){
+	for (tmppage= *pagenum+1;tmppage<PFftab[fd].hdr.numpages;tmppage++){
 		if ( (error_value=BF_GetBuf(fd,tmppage,&fpage,PFreadfunc,
 					PFwritefunc))!= PFE_OK)
 			return(error_value);
 		else if (fpage -> nextfree == PF_PAGE_USED){
 /* found a used page */
-			*pageNum = tmppage;
+			*pagenum = tmppage;
 			*pagebuf = (char *)fpage->pagebuf;
 			return(PFE_OK);
 		}
 
 /* page is free, unfix it */
 		if ((error_value=PF_UnfinPage(fd,tmppage,FALSE))!= PFE_OK)
-			return(error);
+			return(error_value);
 	}
 
 /* No valid used page found */
@@ -342,21 +321,13 @@ PFpage *fpage;	/* pointer to file page */
 }
 
  /* read the first page in the file with fd */
-int PF_GetFirstPage(fd,pageNum,pagebuf) {
-int fd;
-int *pageNum;
-char **pagebuf; /* return a pointer to the page content */
- 
+int PF_GetFirstPage(int fd, int *pagenum, char **pagebuf) {
          *pagenum = -1;
          return(PF_GetNextPage(fd,pagenum,pagebuf));
  }
 
-/* read a valid page specified by pageNum from fd */ 
-int PF_GetThisPage(fd, pageNum, pagebuf) {
-int fd;		/* FD file descriptor */
-int pageNum;	/* number of page to retrieve */
-char **pagebuf;	/* return the content of the page data */
-
+/* read a valid page specified by pagenum from fd */ 
+int PF_GetThisPage(int fd, int pagenum, char **pagebuf) {
 int error_value;
 PFpage *fpage;
 
@@ -365,12 +336,12 @@ PFpage *fpage;
 		return(PFerrno);
 	}
 
-	if (PFinvalidPagenum(fd,pageNum)){
+	if (PFinvalidPagenum(fd,pagenum)){
 		PFerrno = PFE_INVALIDPAGE;
 		return(PFerrno);
 	}
 
-	if ( (error_value=BF_GetBuf(fd,pageNum,&fpage,PFreadfunc,PFwritefunc))!= PFE_OK) 
+	if ( (error_value=BF_GetBuf(fd,pagenum,&fpage,PFreadfunc,PFwritefunc))!= PFE_OK) 
 	
 	if (fpage->nextfree == PF_PAGE_USED){
 /* page is used*/
@@ -379,7 +350,7 @@ PFpage *fpage;
 	}
 	else {
 /* invalid page */
-		if (PF_UnpinPage(fd,pageNum,FALSE)!= PFE_OK){
+		if (PF_UnpinPage(fd,pagenum,FALSE)!= PFE_OK){
 			printf("internal error:PFgetThis()\n");
 			exit(1);
 		}
@@ -388,11 +359,8 @@ PFpage *fpage;
 	}
 }
 
-/*after checking the validity of the fd and pageNum values, this function marks the page associated with fd and pageNum */
-int PF_DirtyPage(fd, pageNum) {
-int fd;		/* file descriptor */
-int pageNum;	/* number of page to b marked dirty */
-
+/*after checking the validity of the fd and pagenum values, this function marks the page associated with fd and pagenum */
+int PF_DirtyPage(int fd, int pagenum) {
 PFpage *fpage; /* pointer to file page */
 int error_value;
 
@@ -401,19 +369,19 @@ int error_value;
                 return(PFerrno);
         }
 
-        if (PFinvalidPagenum(fd,pageNum)){
+        if (PFinvalidPagenum(fd,pagenum)){
                 PFerrno = PFE_INVALIDPAGE;
                 return(PFerrno);
         }
 
-        if ((error_value=BF_GetBuf(fd,pageNum,&fpage,PFreadfunc,PFwritefunc))!= PFE_OK)
+        if ((error_value=BF_GetBuf(fd,pagenum,&fpage,PFreadfunc,PFwritefunc))!= PFE_OK)
 
 /* can't get this page */
                 return(error_value);
 
 	if (fpage -> nextfree != PF_PAGE_USED){
 /* this page already freed */
-		if (PF_UnpinPage(fd,pageNum,FALSE)!= PFE_OK){
+		if (PF_UnpinPage(fd,pagenum,FALSE)!= PFE_OK){
 			printf("internal error: PFdirty()\n");
 			exit(1);
 		}
@@ -423,31 +391,26 @@ int error_value;
 
 /* put this page into the free list */
 	fpage -> nextfree = PFftab[fd].hdr.firstfree;
-	PFftab[fd].hdr.firstfree = pageNum;
+	PFftab[fd].hdr.firstfree = pagenum;
 	PFftab[fd].hdrchanged = TRUE;
 
 /* unpin this page */
-	return(PF_UnpinPage(fd,pageNum,TRUE));
+	return(PF_UnpinPage(fd,pagenum,TRUE));
 }
 
-/*after checking the validity of the fd and pageNum values, this function marks the dirty associated with fd and pageNum  */
-int PF_UnpinPage(fd, pageNum, dirty) {
-int fd;	
-int pageNum;	/* number of page to be unpinned */
-int dirty;	/* dirty indication */
-
-
+/*after checking the validity of the fd and pagenum values, this function marks the dirty associated with fd and pagenum  */
+int PF_UnpinPage(int fd, int pagenum, int dirty) {
 	if (PFinvalidFd(fd)){
 		PFerrno = PFE_FD;
 		return(PFerrno);
 	}
 
-	if (PFinvalidPagenum(fd,pageNum)){
+	if (PFinvalidPagenum(fd,pagenum)){
 		PFerrno = PFE_INVALIDPAGE;
 		return(PFerrno);
 	}
 
-	return(PF_UnpinPage(fd,pageNum,dirty));
+	return(PF_UnpinPage(fd,pagenum,dirty));
 }
 
 /* error messages */
