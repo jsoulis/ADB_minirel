@@ -54,6 +54,8 @@ typedef  struct _hf_record_identification {
 /******************************************************************************/
 typedef struct PFpage {
     char pagebuf[PAGE_SIZE];		/* actual page data             */
+/* additionally added */
+    int nextfree;	/* page number of the next free page in the linked list of the free pages */
 } PFpage;
 
 /******************************************************************************/
