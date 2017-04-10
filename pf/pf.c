@@ -245,3 +245,8 @@ int PF_GetNextPage(int fd, int *pagenum, char **pagebuf) {
 
   return PFE_OK;
 }
+
+int PF_GetFirstPage(int fd, int *pagenum, char **pagebuf) {
+  *pagenum = -1;
+  return PF_GetNextPage(fd, pagenum, pagebuf);
+}
