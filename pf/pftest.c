@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include "minirel.h"
 #include "bf.h"
 #include "pf.h"
@@ -11,6 +12,10 @@
  * default files
  */
 #define FILE1	"file1"
+
+void PF_PrintError(char * str) {
+  printf("%s\n", str);
+}
 
 /*
  * Open the file, allocate as many pages in the file as the buffer manager
@@ -133,11 +138,8 @@ void readfile(char *fname)
  */
 void testpf1(void)
 {
-    int		i, error, pagenum;
-    char*	buf;
-    int		fd1, fd2;
+    int		error;
     char        command[30];
-    int temp;
 
     /* Making sure file don't exist */
     unlink(FILE1);
@@ -175,7 +177,7 @@ void testpf1(void)
 */
 }
 
-main()
+int main()
 {
   /* initialize PF layer */
   PF_Init();
@@ -183,5 +185,7 @@ main()
   printf("\n************* Starting testpf1 *************\n");
   testpf1(); 
   printf("\n************* End testpf1 ******************\n");
+
+  return 0;
 }
 
