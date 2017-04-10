@@ -58,3 +58,27 @@ int PF_CreateFile(char *filename) {
 
   return PFE_OK;
 }
+
+int PF_DestroyFile(char *filename) {
+  struct stat buf;
+  PFftab_ele *file;
+  int i;
+
+  if (stat(filename, &buf) == -1) {
+    return PFE_FILE_NOT_EXIST;
+  }
+
+  /* make sure the file isn't open */
+  for (i = 0; i < PF_FTAB_SIZE; ++i) {
+    file = &file_table[i];
+    if (file->valid && (strcmp(file->fname, filename) == 0)) {
+      return PFE_FILEOPEN;
+    }
+  }
+
+  if (unlink(filename) == -1) {
+    return PFE_REMOVE;
+  }
+
+  return PFE_OK;
+}

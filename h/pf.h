@@ -38,10 +38,12 @@ int PF_UnpinPage(int fd, int pagenum, int dirty);
 #define PFE_FILENOTOPEN (-7)
 #define PFE_NOUSERS (-8)
 #define PFE_FILE_EXISTS (-9)
+#define PFE_FILE_NOT_EXIST (-10)
 
 /*
  * error in UNIX system call or library routine
  */
+#define PFE_REMOVE (-96)
 #define PFE_HDRREAD (-97)
 #define PFE_HDRWRITE (-98)
 #define PFE_MSGERR (-99)
