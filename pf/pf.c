@@ -30,6 +30,12 @@ bool_t file_exists(char *filename) {
   return stat(filename, &buf) != -1;
 }
 
+void create_bf_request(int fd, PFftab_ele *file, BFreq *bq) {
+  bq->fd = fd;
+  bq->unixfd = file->unixfd;
+  bq->pagenum = file->hdr.numpages;
+}
+
 void PF_Init(void) {
   int i;
 
@@ -141,7 +147,7 @@ int PF_CloseFile(int fd) {
   PFftab_ele *file;
 
   /* Ensure that the fd is valid and open */
-  if (fd >= PF_FTAB_SIZE) {
+  if (fd < 0 || fd >= PF_FTAB_SIZE) {
     return PFE_FD;
   }
   if (!file_table[fd].valid) {
@@ -183,7 +189,7 @@ int PF_AllocPage(int fd, int *pagenum, char **pagebuf) {
   PFftab_ele *file;
   BFreq bq;
 
-  if (fd >= PF_FTAB_SIZE) {
+  if (fd < 0 || fd >= PF_FTAB_SIZE) {
     return PFE_FD;
   }
   if (!file_table[fd].valid) {
@@ -191,10 +197,7 @@ int PF_AllocPage(int fd, int *pagenum, char **pagebuf) {
   }
 
   file = &file_table[fd];
-  bq.fd = fd;
-  bq.unixfd = file->unixfd;
-  bq.pagenum = file->hdr.numpages;
-  bq.dirty = TRUE;
+  create_bf_request(fd, file, &bq);
   if (BF_AllocBuf(bq, (PFpage **)pagebuf) != BFE_OK) {
     return PFE_ALLOC_PAGE;
   }
@@ -207,6 +210,38 @@ int PF_AllocPage(int fd, int *pagenum, char **pagebuf) {
 
   ++(file->hdr.numpages);
   file->hdrchanged = TRUE;
+
+  return PFE_OK;
+}
+
+/*
+ * Get the (pagenum + 1) page and update pagenum
+ * Return PF_EOF if there are no more pages
+ */
+int PF_GetNextPage(int fd, int *pagenum, char **pagebuf) {
+  PFftab_ele *file;
+  BFreq bq;
+
+  /* Allow -1 because we'll increment the pagenum */
+  if (fd < -1 || fd >= PF_FTAB_SIZE) {
+    return PFE_FD;
+  }
+  if (!file_table[fd].valid) {
+    return PFE_FILENOTOPEN;
+  }
+
+  file = &file_table[fd];
+  ++(*pagenum);
+
+  /* Equality because pagenum is 0-indexed */
+  if (*pagenum == file->hdr.numpages) {
+    return PFE_EOF;
+  }
+
+  create_bf_request(fd, file, &bq);
+  if (BF_GetBuf(bq, (PFpage **)pagebuf) != BFE_OK) {
+    return PFE_HDRREAD;
+  }
 
   return PFE_OK;
 }
