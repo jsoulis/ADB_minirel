@@ -41,6 +41,7 @@ int PF_UnpinPage(int fd, int pagenum, int dirty);
 #define PFE_FILE_NOT_EXIST (-10)
 #define PFE_FILE_IN_USE (-11)
 #define PFE_ALLOC_PAGE (-12)
+#define PFE_MAKE_DIRTY (-13)
 
 /*
  * error in UNIX system call or library routine

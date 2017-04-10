@@ -30,12 +30,6 @@ bool_t file_exists(char *filename) {
   return stat(filename, &buf) != -1;
 }
 
-void create_bf_request(int fd, PFftab_ele *file, BFreq *bq) {
-  bq->fd = fd;
-  bq->unixfd = file->unixfd;
-  bq->pagenum = file->hdr.numpages;
-}
-
 void PF_Init(void) {
   int i;
 
@@ -197,13 +191,15 @@ int PF_AllocPage(int fd, int *pagenum, char **pagebuf) {
   }
 
   file = &file_table[fd];
-  create_bf_request(fd, file, &bq);
+  bq.fd = fd;
+  bq.unixfd = file->unixfd;
+  bq.pagenum = file->hdr.numpages;
   if (BF_AllocBuf(bq, (PFpage **)pagebuf) != BFE_OK) {
     return PFE_ALLOC_PAGE;
   }
 
   if (BF_TouchBuf(bq) != BFE_OK) {
-    return PFE_ALLOC_PAGE;
+    return PFE_MAKE_DIRTY;
   }
 
   *pagenum = file->hdr.numpages;
@@ -238,7 +234,9 @@ int PF_GetNextPage(int fd, int *pagenum, char **pagebuf) {
     return PFE_EOF;
   }
 
-  create_bf_request(fd, file, &bq);
+  bq.fd = fd;
+  bq.unixfd = file->unixfd;
+  bq.pagenum = file->hdr.numpages;
   if (BF_GetBuf(bq, (PFpage **)pagebuf) != BFE_OK) {
     return PFE_HDRREAD;
   }
@@ -265,4 +263,30 @@ int PF_GetThisPage(int fd, int pagenum, char **pagebuf) {
   } else {
     return return_value;
   }
+}
+
+int PF_DirtyPage(int fd, int pagenum) {
+  PFftab_ele *file;
+  BFreq bq;
+
+  if (fd < 0 || fd >= PF_FTAB_SIZE) {
+    return PFE_FD;
+  }
+
+  file = &file_table[fd];
+  if (!file->valid) {
+    return PFE_FILENOTOPEN;
+  }
+  if (pagenum >= file->hdr.numpages) {
+    return PFE_INVALIDPAGE;
+  }
+
+  bq.fd = fd;
+  bq.unixfd = file->unixfd;
+  bq.pagenum = pagenum;
+  if (BF_TouchBuf(bq) != BFE_OK) {
+    return PFE_MAKE_DIRTY;
+  }
+
+  return PFE_OK;
 }
