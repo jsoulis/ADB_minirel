@@ -106,7 +106,7 @@ int PF_OpenFile(char *filename) {
     }
   }
   if (file == NULL) {
-    return PFE_NO_SPACE;
+    return PFE_FTABFULL;
   }
 
   /* Open file and read value */
@@ -127,4 +127,48 @@ int PF_OpenFile(char *filename) {
   file->hdrchanged = FALSE;
 
   return fd;
+}
+
+/*
+ * 0. Check if valid fd
+ * 1. Flush BF
+ * 2. If updated file header => write
+ * 3. Close
+ * 4. file_table[fd].valid = FALSE
+ */
+int PF_CloseFile(int fd) {
+  int bfe_return_value;
+  PFftab_ele *file;
+
+  /* Ensure that the fd is valid and open */
+  if (fd > PF_FTAB_SIZE) {
+    return PFE_FD;
+  }
+  if (!file_table[fd].valid) {
+    return PFE_FILENOTOPEN;
+  }
+
+  bfe_return_value = BF_FlushBuf(fd);
+  if (bfe_return_value == BFE_PAGEFIXED) {
+    return PFE_FILE_IN_USE;
+  } else if (bfe_return_value == BFE_INCOMPLETEWRITE) {
+    return PFE_HDRWRITE;
+  }
+
+  /* Write header back to file if it changed */
+  file = &file_table[fd];
+  if (file->hdrchanged) {
+    lseek(file->unixfd, 0, SEEK_SET);
+    if (write(file->unixfd, &file->hdr, sizeof(PFhdr_str)) == -1) {
+      return PFE_HDRWRITE;
+    }
+  }
+
+  /* Close file and mark the fd as unused */
+  if (close(file->unixfd) == -1) {
+    return PFE_CLOSE;
+  }
+  file_table[fd].valid = FALSE;
+
+  return PFE_OK;
 }
