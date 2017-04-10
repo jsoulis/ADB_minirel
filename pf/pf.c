@@ -119,7 +119,7 @@ int PF_OpenFile(char *filename) {
   if ((unixfd = open(filename, O_RDWR)) == -1) {
     return PFE_HDRREAD;
   }
-  if (read(unixfd, &file->hdr, sizeof(PFhdr_str)) == -1) {
+  if (read(unixfd, &file->hdr, sizeof(PFhdr_str)) != sizeof(PFhdr_str)) {
     return PFE_HDRREAD;
   }
   if (fstat(unixfd, &file_status) == -1) {
