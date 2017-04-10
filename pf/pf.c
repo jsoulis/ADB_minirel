@@ -290,3 +290,36 @@ int PF_DirtyPage(int fd, int pagenum) {
 
   return PFE_OK;
 }
+
+int PF_UnpinPage(int fd, int pagenum, int dirty) {
+  PFftab_ele *file;
+  BFreq bq;
+
+  if (fd < 0 || fd >= PF_FTAB_SIZE) {
+    return PFE_FD;
+  }
+  file = &file_table[fd];
+  if (!file->valid) {
+    return PFE_FILENOTOPEN;
+  }
+  if (pagenum >= file->hdr.numpages) {
+    return PFE_INVALIDPAGE;
+  }
+
+  bq.fd = fd;
+  bq.unixfd = file->unixfd;
+  bq.pagenum = pagenum;
+  bq.dirty = dirty;
+
+  if (dirty) {
+    if (BF_TouchBuf(bq) != BFE_OK) {
+      return PFE_MAKE_DIRTY;
+    }
+  }
+
+  if (BF_UnpinBuf(bq) != BFE_OK) {
+    return PFE_PAGEFREE;
+  }
+
+  return PFE_OK;
+}
