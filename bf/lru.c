@@ -56,7 +56,7 @@ int LRU_ClearLast(BFpage *lru_head, BFhash_entry **hash_table,
 
   /* Only have to write if the page is dirty */
   if (bpage->dirty) {
-    lseek(bpage->unixfd, (PAGE_SIZE * bpage->pagenum), SEEK_SET);
+    lseek(bpage->unixfd, PAGE_SIZE + (PAGE_SIZE * bpage->pagenum), SEEK_SET);
     if (write(bpage->unixfd, bpage->fpage.pagebuf, PAGE_SIZE) == -1) {
       return BFE_INCOMPLETEWRITE;
     }

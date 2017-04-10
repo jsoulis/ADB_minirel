@@ -23,7 +23,7 @@ int initialize_bpage(BFreq bq, BFpage *page) {
   initialize_bpage_no_read(bq, page);
 
   /* Read page data from an offset. It assumes that pagenum is zero-indexed */
-  lseek(bq.unixfd, (PAGE_SIZE * bq.pagenum), SEEK_SET);
+  lseek(bq.unixfd, PAGE_SIZE + (PAGE_SIZE * bq.pagenum), SEEK_SET);
   return read(bq.unixfd, page->fpage.pagebuf, PAGE_SIZE);
 }
 
@@ -152,7 +152,7 @@ int BF_FlushBuf(int fd) {
       }
 
       if (bpage->dirty) {
-        lseek(bpage->unixfd, (PAGE_SIZE * bpage->pagenum), SEEK_SET);
+        lseek(bpage->unixfd, PAGE_SIZE + (PAGE_SIZE * bpage->pagenum), SEEK_SET);
         if (write(bpage->unixfd, bpage->fpage.pagebuf, PAGE_SIZE) == -1) {
           return BFE_INCOMPLETEWRITE;
         }
