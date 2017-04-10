@@ -141,7 +141,7 @@ int PF_CloseFile(int fd) {
   PFftab_ele *file;
 
   /* Ensure that the fd is valid and open */
-  if (fd > PF_FTAB_SIZE) {
+  if (fd >= PF_FTAB_SIZE) {
     return PFE_FD;
   }
   if (!file_table[fd].valid) {
@@ -169,6 +169,44 @@ int PF_CloseFile(int fd) {
     return PFE_CLOSE;
   }
   file_table[fd].valid = FALSE;
+
+  return PFE_OK;
+}
+
+/*
+ * 0. Check validity of fd
+ * 1. Allocate buffer with BF_AllocBuf
+ * 2. Mark dirty (it's pinned by default)
+ * 3. Increment pagenum of file & set hdrchanged = true
+ */
+int PF_AllocPage(int fd, int *pagenum, char **pagebuf) {
+  PFftab_ele *file;
+  BFreq bq;
+
+  if (fd >= PF_FTAB_SIZE) {
+    return PFE_FD;
+  }
+  if (!file_table[fd].valid) {
+    return PFE_FILENOTOPEN;
+  }
+
+  file = &file_table[fd];
+  bq.fd = fd;
+  bq.unixfd = file->unixfd;
+  bq.pagenum = file->hdr.numpages;
+  bq.dirty = TRUE;
+  if (BF_AllocBuf(bq, (PFpage **)pagebuf) != BFE_OK) {
+    return PFE_ALLOC_PAGE;
+  }
+
+  if (BF_TouchBuf(bq) != BFE_OK) {
+    return PFE_ALLOC_PAGE;
+  }
+
+  *pagenum = file->hdr.numpages;
+
+  ++(file->hdr.numpages);
+  file->hdrchanged = TRUE;
 
   return PFE_OK;
 }
