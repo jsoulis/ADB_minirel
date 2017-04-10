@@ -39,6 +39,7 @@ int PF_UnpinPage(int fd, int pagenum, int dirty);
 #define PFE_NOUSERS (-8)
 #define PFE_FILE_EXISTS (-9)
 #define PFE_FILE_NOT_EXIST (-10)
+#define PFE_NO_SPACE (-11)
 
 /*
  * error in UNIX system call or library routine
