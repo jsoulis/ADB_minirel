@@ -2,7 +2,7 @@
 LIB	= pf
 INCDIR	= ${MINIREL_HOME}/h
 INCS	= 
-SRCS	= ${MINIREL_HOME}/pf/pf.c
+SRCS	= 
 TESTS	= pftest.c
 OBJS	= ${SRCS:.c=.o}
 LIBS	= lib${LIB}.a ../bf/libbf.a
@@ -29,3 +29,4 @@ clean:
 	rm -f lib${LIB}.a *.o ${LIB}test *.bak *~
 
 .c.o:; $(CC) $(CFLAGS) -c $< -I. -I$(INCDIR)
+

@@ -1,5 +1,10 @@
 *.o
 *.a
 
+*.out
+
 bf/bftest
 bf/file1
+
+pf/pftest
+pf/file1
