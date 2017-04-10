@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -45,7 +46,8 @@ int PF_CreateFile(char *filename) {
   int unixfd;
 
   /* By adding O_CREAT and O_EXCL we can get error if file exists */
-  unixfd = open(filename, O_RDWR | O_CREAT | O_EXCL);
+  unixfd = open(filename, O_RDWR | O_CREAT | O_EXCL,
+                S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   if (unixfd == -1) {
     return PFE_UNIX;
   } else if (errno == EEXIST) {
@@ -122,7 +124,10 @@ int PF_OpenFile(char *filename) {
 
   file->valid = TRUE;
   file->inode = file_status.st_ino;
+
+  file->filename = malloc(strlen(filename));
   strcpy(file->filename, filename);
+
   file->unixfd = unixfd;
   file->hdrchanged = FALSE;
 
@@ -168,6 +173,8 @@ int PF_CloseFile(int fd) {
   if (close(file->unixfd) == -1) {
     return PFE_CLOSE;
   }
+
+  free(file_table[fd].filename);
   file_table[fd].valid = FALSE;
 
   return PFE_OK;
