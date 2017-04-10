@@ -2,6 +2,7 @@
 *.a
 
 *.out
+*.gch
 
 bf/bftest
 bf/file1
