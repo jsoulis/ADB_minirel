@@ -1,8 +1,14 @@
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "minirel.h"
 
 #include "bf.h"
+#include "pf.h"
 
 typedef struct PFhdr_str {
   int numpages; /* number of pages in the file */
@@ -27,4 +33,28 @@ void PF_Init(void) {
   for (i = 0; i < PF_FTAB_SIZE; ++i) {
     file_table[i].valid = FALSE;
   }
+}
+
+int PF_CreateFile(char *filename) {
+  char header[PAGE_SIZE];
+  int unixfd;
+
+  /* By adding O_CREAT and O_EXCL we can get error if file exists */
+  unixfd = open(filename, O_RDWR | O_CREAT | O_EXCL);
+  if (unixfd == -1) {
+    return PFE_UNIX;
+  } else if (errno == EEXIST) {
+    return PFE_FILE_EXISTS;
+  }
+
+  memset(&header, 0, PAGE_SIZE);
+  if (write(unixfd, &header, PAGE_SIZE) == -1) {
+    return PFE_HDRWRITE;
+  }
+
+  if (close(unixfd) == -1) {
+    return PFE_UNIX;
+  }
+
+  return PFE_OK;
 }
