@@ -243,7 +243,7 @@ int PF_GetNextPage(int fd, int *pagenum, char **pagebuf) {
 
   bq.fd = fd;
   bq.unixfd = file->unixfd;
-  bq.pagenum = file->hdr.numpages;
+  bq.pagenum = *pagenum;
   if (BF_GetBuf(bq, (PFpage **)pagebuf) != BFE_OK) {
     return PFE_HDRREAD;
   }
