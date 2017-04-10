@@ -250,3 +250,19 @@ int PF_GetFirstPage(int fd, int *pagenum, char **pagebuf) {
   *pagenum = -1;
   return PF_GetNextPage(fd, pagenum, pagebuf);
 }
+
+int PF_GetThisPage(int fd, int pagenum, char **pagebuf) {
+  int return_value;
+  /* Get next page will increment the page num, so decrement it first */
+  --pagenum;
+
+  return_value = PF_GetNextPage(fd, &pagenum, pagebuf);
+
+  if (return_value == PFE_OK) {
+    return PFE_OK;
+  } else if (return_value == PFE_EOF || return_value == PFE_FD) {
+    return PFE_INVALIDPAGE;
+  } else {
+    return return_value;
+  }
+}
