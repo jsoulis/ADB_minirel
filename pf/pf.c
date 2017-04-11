@@ -51,7 +51,7 @@ int PF_CreateFile(char *filename) {
   if (unixfd == -1) {
     return PFE_UNIX;
   } else if (errno == EEXIST) {
-    return PFE_FILE_EXISTS;
+    return PFE_UNIX;
   }
 
   memset(&header, 0, PAGE_SIZE);
@@ -71,7 +71,7 @@ int PF_DestroyFile(char *filename) {
   int i;
 
   if (!file_exists(filename)) {
-    return PFE_FILE_NOT_EXIST;
+    return PFE_UNIX;
   }
 
   /* make sure the file isn't open */
@@ -83,7 +83,7 @@ int PF_DestroyFile(char *filename) {
   }
 
   if (unlink(filename) == -1) {
-    return PFE_REMOVE;
+    return PFE_UNIX;
   }
 
   return PFE_OK;
@@ -95,7 +95,7 @@ int PF_OpenFile(char *filename) {
   struct stat file_status;
 
   if (!file_exists(filename)) {
-    return PFE_FILE_NOT_EXIST;
+    return PFE_UNIX;
   }
 
   /* find the first empy page */
@@ -155,7 +155,7 @@ int PF_CloseFile(int fd) {
 
   bfe_return_value = BF_FlushBuf(fd);
   if (bfe_return_value == BFE_PAGEFIXED) {
-    return PFE_FILE_IN_USE;
+    return PFE_FILEOPEN;
   } else if (bfe_return_value == BFE_INCOMPLETEWRITE) {
     return PFE_HDRWRITE;
   }
@@ -171,7 +171,7 @@ int PF_CloseFile(int fd) {
 
   /* Close file and mark the fd as unused */
   if (close(file->unixfd) == -1) {
-    return PFE_CLOSE;
+    return PFE_UNIX;
   }
 
   free(file_table[fd].filename);
@@ -202,11 +202,11 @@ int PF_AllocPage(int fd, int *pagenum, char **pagebuf) {
   bq.unixfd = file->unixfd;
   bq.pagenum = file->hdr.numpages;
   if (BF_AllocBuf(bq, (PFpage **)pagebuf) != BFE_OK) {
-    return PFE_ALLOC_PAGE;
+    return PFE_HDRWRITE;
   }
 
   if (BF_TouchBuf(bq) != BFE_OK) {
-    return PFE_MAKE_DIRTY;
+    return PFE_UNIX;
   }
 
   *pagenum = file->hdr.numpages;
@@ -292,7 +292,7 @@ int PF_DirtyPage(int fd, int pagenum) {
   bq.unixfd = file->unixfd;
   bq.pagenum = pagenum;
   if (BF_TouchBuf(bq) != BFE_OK) {
-    return PFE_MAKE_DIRTY;
+    return PFE_UNIX;
   }
 
   return PFE_OK;
@@ -320,7 +320,7 @@ int PF_UnpinPage(int fd, int pagenum, int dirty) {
 
   if (dirty) {
     if (BF_TouchBuf(bq) != BFE_OK) {
-      return PFE_MAKE_DIRTY;
+      return PFE_UNIX;
     }
   }
 
