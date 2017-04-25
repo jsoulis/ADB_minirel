@@ -1,5 +1,5 @@
 # ADB_minirel
-minirel project for advanced database class.
+minirel project for advanced database class, 2017 Seoul National University
 
 # 1. Introduction
 
