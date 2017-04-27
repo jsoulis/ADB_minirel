@@ -13,11 +13,12 @@
 #include "hf.h"
 
 void HF_Init(void) {
-
+  //initialize other data strctures needed for this layer
+  PF_Init();
 }
 
 int HF_CreateFile(char *fileName, int recSize) {
-
+  
 }
 
 int HF_DestroyFile(char *fileName) {
@@ -65,5 +66,5 @@ int HF_CloseFileScan(int scanDesc) {
 }
 
 bool_t HF_ValidRecId(int HFfd, RECID recid) {
-  
+
 }
