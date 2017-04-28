@@ -14,13 +14,21 @@
 
 typedef struct HFhdr_str {
   int numrecs;
-  int numdatapages;
+  int numpages;
   int recsize;
+  int firstPage;
+  int lastPage;
 } HFhdr_str;
 
 typedef struct HFftab_ele {
-
+  bool_t valid;
+  char *filename;
+  HFhdr_str hdr;
+  bool_t hdrchanged;
+  bool_t scanActive; /*TRUE if scan is active*/
 }
+
+HFftab_ele file_table[HF_FTAB_SIZE];
 
 void HF_Init(void) {
   //initialize other data strctures needed for this layer
@@ -28,6 +36,15 @@ void HF_Init(void) {
 }
 
 int HF_CreateFile(char *fileName, int recSize) {
+  HFhdr_str *hdr;
+
+  if(PF_CreateFile(filename)!=0) {
+    return HFE_PF;
+  }
+
+  if(PF_OpenFile(filename) < 0) {
+    return HFE_PF;
+  }
 
 }
 
