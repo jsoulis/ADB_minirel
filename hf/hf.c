@@ -53,7 +53,7 @@ int HF_DestroyFile(char *fileName) {
 }
 
 int HF_OpenFile(char *fileName) {
-
+ //header data should be copied to the file table.
 }
 
 int HF_CloseFile(int HFfd) {

@@ -227,12 +227,21 @@ int PF_GetNextPage(int fd, int *pagenum, char **pagebuf) {
   BFreq bq;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   /* Allow -1 because we'll increment the pagenum */
   if (fd >= PF_FTAB_SIZE) {
 =======
   
   if (fd < 0 || fd >= PF_FTAB_SIZE) {
 >>>>>>> Fixed statement that allowed fd to be -1 in PF_GetNextPage function
+=======
+  
+  if (fd < 0 || fd >= PF_FTAB_SIZE) {
+=======
+  /* Allow -1 because we'll increment the pagenum */
+  if (fd >= PF_FTAB_SIZE) {
+>>>>>>> master
+>>>>>>> 3962562de9a2aa29b5b4385d01346c92c3722d33
     return PFE_FD;
   }
   if (!file_table[fd].valid) {
