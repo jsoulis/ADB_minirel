@@ -14,9 +14,12 @@ CFLAGS	= -g -ansi -pedantic -Wall -Wextra -Werror
 #CFLAGS	= -O -ansi -pedantic
 #############################################################################
 
-all: lib${LIB}.a ${LIB}test
+all: lib${LIB}.a ${LIB}test ${LIB}test2
 
 ${LIB}test: ${LIB}test.o ${LIBS}
+	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
+
+${LIB}test2: ${LIB}test2.o ${LIBS}
 	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
 
 lib${LIB}.a:$(OBJS)
@@ -26,7 +29,7 @@ lib${LIB}.a:$(OBJS)
 $(OBJS): ${INCS}
 
 clean:
-	rm -f lib${LIB}.a *.o ${LIB}test *.bak *~
+	rm -f lib${LIB}.a *.o ${LIB}test ${LIB}test2 *.bak *~
 
 .c.o:; $(CC) $(CFLAGS) -c $< -I. -I$(INCDIR)
 
