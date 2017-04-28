@@ -3,8 +3,11 @@
 
 #include <minirel.h>
 
+#define HF_FTAB_SIZE    MAXOPENFILES    /* max number of HF files allowed */
+#define MAXSCANS        MAXOPENFILES    /* max number of HF scans allowed */
+
 /****************************************************************************
- * hf.h: external interface definition for the HF layer 
+ * hf.h: external interface definition for the HF layer
  ****************************************************************************/
 
 /*
@@ -20,7 +23,7 @@ int	 	HF_DeleteRec(int fileDesc, RECID recId);
 RECID 		HF_GetFirstRec(int fileDesc, char *record);
 RECID		HF_GetNextRec(int fileDesc, RECID recId, char *record);
 int	 	HF_GetThisRec(int fileDesc, RECID recId, char *record);
-int 		HF_OpenFileScan(int fileDesc, char attrType, int attrLength, 
+int 		HF_OpenFileScan(int fileDesc, char attrType, int attrLength,
 				int attrOffset, int op, char *value);
 RECID		HF_FindNextRec(int scanDesc, char *record);
 int		HF_CloseFileScan(int scanDesc);
@@ -74,7 +77,7 @@ typedef struct {
     int RecSize;                 /* Record size */
     int RecPage;                 /* Number of records per page */
     int NumPg;                   /* Number of pages in file */
-    int NumFrPgFile;             /* Number of free pages in the file */ 
+    int NumFrPgFile;             /* Number of free pages in the file */
 } HFHeader;
 #endif
 
@@ -85,4 +88,3 @@ typedef struct {
 extern int	HFerrno;
 
 #endif
-
