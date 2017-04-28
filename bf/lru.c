@@ -46,7 +46,7 @@ int LRU_ClearLast(BFpage *lru_head, BFhash_entry **hash_table,
   }
 
   /* We need to find a page that's not pinned */
-  while (bpage->count > 0 && bpage) {
+  while (bpage && bpage->count > 0) {
     bpage = bpage->prevpage;
   }
 
