@@ -209,6 +209,7 @@ int PF_AllocPage(int fd, int *pagenum, char **pagebuf) {
     return PFE_UNIX;
   }
 
+/*pagenum is zero indexed*/
   *pagenum = file->hdr.numpages;
 
   ++(file->hdr.numpages);
@@ -225,8 +226,8 @@ int PF_GetNextPage(int fd, int *pagenum, char **pagebuf) {
   PFftab_ele *file;
   BFreq bq;
 
-  /* Allow -1 because we'll increment the pagenum */
-  if (fd < -1 || fd >= PF_FTAB_SIZE) {
+  
+  if (fd < 0 || fd >= PF_FTAB_SIZE) {
     return PFE_FD;
   }
   if (!file_table[fd].valid) {

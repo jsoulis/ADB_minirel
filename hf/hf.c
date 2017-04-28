@@ -12,13 +12,23 @@
 #include "pf.h"
 #include "hf.h"
 
+typedef struct HFhdr_str {
+  int numrecs;
+  int numdatapages;
+  int recsize;
+} HFhdr_str;
+
+typedef struct HFftab_ele {
+
+}
+
 void HF_Init(void) {
   //initialize other data strctures needed for this layer
   PF_Init();
 }
 
 int HF_CreateFile(char *fileName, int recSize) {
-  
+
 }
 
 int HF_DestroyFile(char *fileName) {
