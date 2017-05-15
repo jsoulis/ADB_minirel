@@ -3,6 +3,8 @@
 
 #include <minirel.h>
 
+#define AM_ITAB_SIZE 	MAXOPENFILES	/* max number of AM files allowed */
+#define MAXSCANS	MAXOPENFILES 	/* max number of AM scans allowed */
 /****************************************************************************
  * am.h: External interface to the AM layer
  ****************************************************************************/
@@ -60,6 +62,8 @@ void AM_PrintError	(char *errString);
 #define         AME_TOOMANYRECSPERKEY   (-22)
 #define         AME_KEYNOTFOUND         (-23)
 #define         AME_DUPLICATEKEY        (-24)
+
+#define 	AME_INVALIDVALUE	(-25)
 
 /*
  * global error value
