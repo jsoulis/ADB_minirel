@@ -14,12 +14,10 @@
 
 #define INNER 'I'
 #define LEAF 'L'
+//#define NULL ((void *)0)
+#define AM_ErrorCheck if (err != PFE_OK) {AMerrno = err; return AME_PF;}
 
-#define AM_ErrorCheck if (err != PFE_OK) {AMerrno = AME_PF; return (AME_PF);}
-enum { EQ =1, LT, LTQ, GT, GTE, NEQ };// for comparison
-
-
-typedef struct node_header{
+struct node_header{
 	char pageType;			/* type of node, inner or leaf */
 	int  numRecords;		/* how many records in the node */
 	int	 pageId;			/* next leaf node or the last pointer of an inner node */
@@ -29,18 +27,22 @@ typedef struct node_header{
 	//char attrType;
 } node_header;
 
-/**typedef struct open_index{
-		int depth;
-		int total_numpages;
-		int max_records_per_page;
-		int max_numpages;
-		
-		char *filename;
-}open_index[MAXOPENFILES];**/ 			//is needed??
+struct open_index{
+	int 	depth;					// the total depth of B+ tree index
+	int		is_empty;					// the index exists or not
+	int 	total_numpages;			// total number of blocks
+	int 	max_records;			// max number of records in the index
+	int 	max_numpages;			// total number of pages in the file
+	char 	attrType;				// the type of value
+	char 	*filename;				// the file name of the index
+	int 	attrLength;				// the size of value in bytes
+	//char *hash_table;
+};
+struct open_index AM_index_table[MAXOPENFILES];
 
-typedef struct scan_entryindex{
+struct scan_entryindex{
 	int 	fd;
-	int 	status;				/*status 0 = empty, status 1 = exists  */
+	int 	is_empty;				/* 1 = true = empty  0 = false = not empty (exists) */
 	int 	op;				/* to compare the index with the value */
 	char 	*value;			/* the value which will be compared */
 	char 	attrType;		
@@ -51,14 +53,47 @@ typedef struct scan_entryindex{
 	//int 	last_pagenum;
 	//int 	next_pagenum;
 	//int 	lastBucketNum;
-}scan_table[MAXSCANS];
+};
+
+struct scan_entryindex AM_scan_table[MAXSCANS];
 
 
+char *filename_size(char *filename, int indexNo)
+{
+	int fn_size;
+	char *index_filename;
 
+	/*Check for a valid input*/
+	if( filename == NULL)
+	{
+		//AMerrno = AME_INVALIDFILENAME;
+		return NULL;
+	}
+	if (indexNo == -1)
+	{	
+		//AMerrno = AME_INVALIDINDEXNO;
+		return NULL;
+	}
 
+	int timesCanBeDividedByTen = 0;
+	int tempIndexNo = indexNo;
+	while (tempIndexNo)
+	{
+		++timesCanBeDividedByTen;
+		tempIndexNo/=10;
+	}
 
+	/*The length size */
+	fn_size = strlen (filename) + tempIndexNo + 1; // + 1 for \0
 
+	index_filename = malloc (fn_size + sizeof(char));
 
+	if(index_filename == NULL)
+	{
+		AMerrno = AME_NOMEM;
+		return NULL;
+		}
+}
 
 //--------------------------Initialize----------------------------------
 void AM_Init(void)
@@ -67,7 +102,11 @@ void AM_Init(void)
  	// HF_Init();
 
  	for ( int i = 0; i < MAXOPENFILES; i++) //this function is needed??
-	 {}
+	 {
+		 AM_index_table[i].is_empty = 1;
+		 AM_index_table[i].filename = NULL;
+		// AM_index_table[i].hash_table = NULL;
+	 }
 
 	for(int i = 0; i < MAXSCANS; i++)
 	{
@@ -77,7 +116,7 @@ void AM_Init(void)
 	//	scan_table[i].op = AM_INVALIDPARA;
 	//	scan_table[i].fd = AM_INVALIDPARA;
 
-	scan_table[i].status = 1; 
+	AM_scan_table[i].is_empty = 1; 
 	}
 	AMerrno = AME_OK;
 }
@@ -92,14 +131,9 @@ int AM_CreateIndex(char* filename, int indexNo, char attrType, int attrLength, b
 	char 	*pagebuf;		/* (root_node)  buffer to hold a page*/
 	
 	//int depth;
-
-	int 	records_per_node;	/*the number of records that are hold in the one page (node)  */
-	char 	index_filename[strlen(filename)]; /* String to store the indexed files name with extensions*/
-	//or??
-	// char *file;
-	//file = new char [strlen(filename)]		/**/
-	//char index_filename[sizeof("testrel")]
-
+	int 	records_in_node;	/*the number of records that are hold in the one page (node)  */
+	char 	*index_filename; /* to store the indexed files name with extensions*/
+	
 //--- Check Attributes-------------------------------------------------
 	/*  Check the parameters */
 	if (( attrType != 'c') && (attrType != 'i') && (attrType != 'f'))
@@ -124,58 +158,66 @@ int AM_CreateIndex(char* filename, int indexNo, char attrType, int attrLength, b
 			return(AME_INVALIDATTRLENGTH);
 		}
 
-	if (index_filename == NULL)		//this check is needed?
-	{
-		AMerrno = AME_NOMEM;
-		return AME_NOMEM;
-	}
+	if( !(index_filename = filename_size(filename, indexNo)) )	return AMerrno;
+
 //--------------------------------------------------------------------
 
 	/* Get the fileName and create a paged file by its name*/
 	sprintf(index_filename, "%s.%d", filename, indexNo);
 
 //-----Create, Open, Allocate PF File------------------------------
-	err = PF_CreateFile(index_filename);	//check this
-	AM_ErrorCheck;
+	if ( (err = PF_CreateFile(index_filename) ) < 0 )
+	{
+		AMerrno = err;
+		return err;
+	}
 
 	/* Open the file from PF layer */
-	AM_fd = err = PF_OpenFile(index_filename); //delete err?
-	if (AM_fd == -1)
+	if ( ( AM_fd = err = PF_OpenFile(index_filename) ) < 0) 
 	{
-		AMerrno = AME_PF;
-		return AME_PF;
+		AMerrno = err;
+		return err;
 	}
 
 	/*Allocate pages for the root*/
-	err = PF_AllocPage(AM_fd, &pagenum, &pagebuf);
-	AM_ErrorCheck;
-
+	if ( (err = PF_AllocPage(AM_fd, &pagenum, &pagebuf) < 0 ) )
+	{
+		//PF_CloseFile(AM_fd);
+		AMerrno = err;
+		return err;
+	}
 //----------------------------------------------------------------------------------------------------
 	//totalBlocks = 0; need?
-	records_per_node = (PAGE_SIZE - sizeof(node_header))/(attrLength + sizeof(int)); 		//check 
+	records_in_node = (PAGE_SIZE - sizeof(node_header))/(attrLength + sizeof(RECID)); 		//check 
 
 	/* Initialize */
 	memset(pagebuf , 0 , PAGE_SIZE);
-	((/*typedef*/ struct node_header *)pagebuf)->numRecords = records_per_node;
+	((/*typedef*/ struct node_header *)pagebuf)->numRecords = records_in_node;
 	((/*typedef*/ struct node_header *)pagebuf)->pageType= LEAF;
 	((/*typedef*/ struct node_header *)pagebuf)->pageId = -1;	// next leaf page or the last pointer of an inner node
 
 	//((typedef struct node_header *)pagebuf)->depth = 0;
+	//((typedef struct node_header *)pagebuf)->totalBlock = 0;
 	//((typedef struct node_header *)pagebuf)->attrType = sizeof(char);
 	//((typedef struct node_header *)pagebuf)->attrLength = sizeof(int);
 	
 	//to update the fd and pagebuf are needed??? if yes, I should add codes here
 
-	err = PF_UnpinPage( AM_fd, pagenum, TRUE);
-	AM_ErrorCheck;
+	if ( (err = PF_UnpinPage( AM_fd, pagenum, TRUE) ) < 0 )
+	{
+		//PF_CloseFile(AM_fd);
+		AMerrno = err;
+		return err;
+	} 
 
 	/*	Close the file */
-	err = PF_CloseFile(AM_fd);
-	AM_ErrorCheck;
+	if ( (err = PF_CloseFile(AM_fd) ) != PFE_OK)
+	{
+		AMerrno = err;
+		return err;
+	}
 
-	/* initialize the root page and the leftmost page numbers */
-	//AM_rootPageNum = pagenum;??
-
+	//free(index_filename);
 	return AME_OK;
 
 }
@@ -184,16 +226,9 @@ int AM_CreateIndex(char* filename, int indexNo, char attrType, int attrLength, b
 int AM_DestroyIndex(char *filename, int indexNo)
 {
 	int err;
-	//char index_filename[sizeof("testrel")];		/* Indexed file */
-	char index_filename[strlen(filename)];		//Pwe need max index name..strlen of file name is suitable??
+	char *index_filename;		//Pwe need max index name..strlen of file name is suitable??
 
-	// check filename == NULL??   is needed???
-	//check IndexNo < 0 ?
-	if (index_filename == NULL)		//this check is needed?
-	{
-		AMerrno = AME_NOMEM;
-		return AME_NOMEM;
-	}
+	if( !(index_filename = filename_size(filename, indexNo)) )return AMerrno;
 	//..check smth else..?
 
 	sprintf(index_filename, "%s.%d", filename, indexNo);  //needed?
@@ -207,31 +242,83 @@ int AM_DestroyIndex(char *filename, int indexNo)
 
 int AM_OpenIndex(char *filename, int indexNo)
 {
-	int AM_fd;
-	char index_filename[strlen(filename)];
-	//char index_filename[sizeof("testrel")]; /* String to store the indexed files name with extensions*/
+	int 	err;
+	int 	AM_fd;
+	int 	pagenum;
+	char	*pagebuf;
+	char	*index_filename;
+	
+	if( !(index_filename = filename_size(filename, indexNo)) ) return AMerrno;
 
-	if (index_filename == NULL)		//this check is needed?
-	{
-		return AMerrno;
-	}
-	sprintf(index_filename, /*sizeof(index_filename),/* %s.%.4i.index or */"%s.%d", filename, indexNo); //
+	sprintf(index_filename, /*sizeof(index_filename),*/"%s.%d", filename, indexNo); //
 
 	if ((AM_fd = PF_OpenFile(index_filename)) < 0)
 	{
 		AMerrno = AM_fd;
-		return AME_FD;	//or AM_fd
+		return AM_fd; //or AME_FD?
 	}
 
+
+//-------------------CORRECT??------------------------------------
+	/* Load the index of the filename*/
+	if ( !(AM_index_table[AM_fd].filename == malloc (strlen (index_filename) + 1)) ){
+		AMerrno = AME_NOMEM;
+		return AME_NOMEM;
+	}
+
+	if (( AM_fd = PF_OpenFile(index_filename)) < 0 )
+	{
+		AMerrno = AM_fd;
+		return AM_fd;
+	}
+
+	strcpy(AM_index_table[AM_fd].filename, index_filename);
 	
+	// get the first page into the AM descriptor from PF layer
+	if ((err = PF_GetFirstPage(AM_fd, &pagenum, &pagebuf))!= PFE_OK)
+	{
+		AMerrno = err;
+		free(index_filename);
+		return err;
+	}
+	/* store the data in the open index structure */
+	//memcpy(&AM_index_table[AM_fd].depth, pagebuf, sizeof(int));
+	//TODO
+
+	AM_index_table[AM_fd].is_empty = 0; //non empty
+
+	if((err = PF_UnpinPage(AM_fd, pagenum, FALSE)) != PFE_OK) 
+	{
+		AMerrno = err;
+		return err;
+	}
+//-----------------------------------------------------
 	return AM_fd;	/* returns the value of file descriptior of B+ tree index - index into the index table */
 }
 
 int AM_CloseIndex(int AM_fd)
 {
-	return PF_CloseFile(AM_fd);
+	int err;
+
+		//Get first page
+		//TODO
+		//Unpin..needed???
+
 	//close the index file with the indicated file descriptor by calling PF_CloseFile().
 	//It deletes the entry for this index from the index table
+	if((err = PF_CloseFile(AM_fd)) != PFE_OK)
+	{
+		AMerrno = err;
+		return err;
+	}
+	/* release the memory position in which the index was */
+	if( !AM_index_table[AM_fd].filename)
+	{
+		free(AM_index_table[AM_fd].filename);
+		AM_index_table[AM_fd].filename = NULL;
+	}
+	AM_index_table[AM_fd].is_empty = 1; //empty
+	return AME_OK;
 }
 
 int AM_InsertEntry(int AM_fd, char *value, RECID recId)
@@ -247,7 +334,7 @@ int AM_InsertEntry(int AM_fd, char *value, RECID recId)
 	void 	*val;		/* the size of key value from attrLength*/
 
 	int 	index;	 	/* the index where key can be inserted or found */	
-	int 	status;  /* key is in tree (old) ornot (new) */
+	int 	is_empty;  /* key is in tree (old) ornot (new) */
 
 	//int inserted_key;	/* if the key was inserted into the leaf or it is needed to split */
 	//int add_to_parent;			/* whether the key has to be added to parent ??*/
@@ -314,7 +401,7 @@ int AM_InsertEntry(int AM_fd, char *value, RECID recId)
 	/**If key is inserted, return AME_OK */
 	if ( err != AME_OK)
 	{
-		Amerrno = err;
+		AMerrno = err;
 		return err;
 	}
 	
@@ -357,7 +444,7 @@ int AM_DeleteEntry(int AM_fd, char*value, RECID recId)
 	char 	*pagebuf;		/* a page( node) */
 	int 	pagenum;		/* the page number of the page (block)*/
 	int 	index;			/* the index where key is present/ where is the current key*/
-	int 	status;
+	int 	is_empty;
 
 	//int 	keysize;		/* the size of the record/key  / the length of key, ptr pair for a leaf */
 	int 	err;		/* holds the return value of functions called within this function */
@@ -422,7 +509,7 @@ int AM_OpenIndexScan(int AM_fd, int op, char *value)
 {
 	int i; 	/* for a loop */
 //-----Check FD, attribute, value --------------------------------------
-	if (AM_fd < 0 )/*|| AM_fd > MAXOPENFILES ) /*|| !scan_table[AM_fd].status) */ 
+	if (AM_fd < 0 )/*|| AM_fd > MAXOPENFILES ) /*|| !scan_table[AM_fd].is_empty) */ 
 	{
 		AMerrno = AME_FD;
 		return AME_FD;
@@ -439,7 +526,7 @@ int AM_OpenIndexScan(int AM_fd, int op, char *value)
 
 	// to find a free place in the scan table
 	for( i = 0; i < MAXSCANS; i++)				
-		if(scan_table[i].status) break;	
+		if(scan_table[i].is_empty) break;	
 	
 	// if no a free place found, then the scan table is full 
 	if ( i == MAXSCANS)
@@ -494,7 +581,7 @@ int AM_OpenIndexScan(int AM_fd, int op, char *value)
 	//errVal = PF_UnpinPage(AM_fd, find_paagenum, FALSE);
 	//AM_ErrorCheck;
 	
-	scan_table[i].status = 0;
+	scan_table[i].is_empty = 0;
 	return i;		
 }
 
@@ -503,23 +590,23 @@ RECID AM_FindNextEntry(int scanDesc)
 	//returns record id of the next record that satisfied the confitions specified for an index scan associated with scanDesc
 	//if there is no more records
 	int 	AM_fd;
-	int 	recId;		/* record ID to be returned*/
+	RECID 	recId;		/* record ID to be returned*/
 	int 	next_leaf_page;
 	char 	*pagebuf; //node
-	int 	err;
+	RECID 	err;
 	int 	comp;
 	int 	size_record;	/* the size of key, ptr pair for leaf */
 
 	
 	//Check if a scan is valid
-	if( (scanDesc < 0) || (scanDesc >= MAXSCANS) || (!scan_table->status) ) //check this condition!
+	if( (scanDesc < 0) || (scanDesc >= MAXSCANS) || (!scan_table->is_empty) ) //check this condition!
 	{
 		AMerrno = AME_INVALIDSCANDESC;
 		return AME_INVALIDSCANDESC;
 	}
 	
 	// Check if scan over??
-	//if(scan_entryindex[scNDesc].status == OVER) return AME_EOF;
+	//if(scan_entryindex[scNDesc].is_empty == OVER) return AME_EOF;
 
 	/* Get the page (block) to start the scanning */
 	if( (err = PF_GetThisPage(scan_table->fd, scan_table->pageId, &pagebuf) != PFE_OK) )
@@ -590,12 +677,12 @@ RECID AM_FindNextEntry(int scanDesc)
 int AM_CloseIndexScan(int scanDesc)
 {
 	//Check for valid input
-	if( (scanDesc < 0) /*&&*/|| (scanDesc >= MAXSCANS) /*&&*/|| (!scan_table[scanDesc].status)) //check this condition!
+	if( (scanDesc < 0) /*&&*/|| (scanDesc >= MAXSCANS) /*&&*/|| (!scan_table[scanDesc].is_empty)) //check this condition!
 	{
 		AMerrno = AME_INVALIDSCANDESC;
 		return AME_INVALIDSCANDESC;
 	}
-	scan_table[scanDesc].status = 1; //status = FREE
+	scan_table[scanDesc].is_empty = 1; //is_empty = 1 false, not empty
 
 	free(scan_table[scanDesc].value); //to NULL the value
 	return AME_OK;
