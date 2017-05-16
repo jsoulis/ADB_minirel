@@ -92,7 +92,8 @@ char *filename_size(char *filename, int indexNo)
 	{
 		AMerrno = AME_NOMEM;
 		return NULL;
-		}
+	}
+	return index_filename;
 }
 
 //--------------------------Initialize----------------------------------
