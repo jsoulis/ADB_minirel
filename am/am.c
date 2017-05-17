@@ -393,10 +393,7 @@ int AM_InsertEntry(int AM_fd, char *value, RECID recId)
 	/* To insert a pair (key value and recID) into the leaf*/
 //	inserted_key = AM_insert_leaf(pagebuf,value, recId, header->attrLength, index, keystatus);
 
-	err = insert_value_to_node(AM_fe, value, attrType, attrLength,recId );
-
-	/**If key is inserted, return AME_OK */
-	if ( err != AME_OK)
+	if ((err = insert_value_to_node(AM_fd, value,recId ) ) != AME_OK)
 	{
 		AMerrno = err;
 		return err;
@@ -408,8 +405,7 @@ int AM_InsertEntry(int AM_fd, char *value, RECID recId)
 
 //------------SPLIT----------------------------------
 	/* To allocate a new page (block) to the new root */
-	err = PF_AllocPage(AM_fd,&pagenum, &pagebuf);
-	if( err != PFE_OK)
+	if ( (err = PF_AllocPage(AM_fd,&pagenum, &pagebuf)) != PFE_OK) 
 	{
 		AMerrno = err;
 		return err;
@@ -419,15 +415,12 @@ int AM_InsertEntry(int AM_fd, char *value, RECID recId)
 	//((struct node_header *)pagebuf)->pageId = left;
 	//((struct node_header *)pagebuf)->type = INNER;
 
-	err = PF_UnpinPage(AM_fd, pagenum, TRUE);
-	if( err != PFE_OK)
+	if ( ( err = PF_UnpinPage(AM_fd, pagenum, TRUE) ) != PFE_OK)
 	{
 		AMerrno = err;
 		return err;
 	}
 
-	
-	free(val);
 	return AME_OK;
 
 }
@@ -448,13 +441,13 @@ int AM_DeleteEntry(int AM_fd, char*value, RECID recId)
 	
 //------------Chech parameters, fd, value---------------------
 	/** To check the parameters */
-	if ( (attrType != 'i') && (attrType != 'f' ) && (attrType != 'c') )
+	/*if ( (attrType != 'i') && (attrType != 'f' ) && (attrType != 'c') )
 	{
 		AMerrno = AME_INVALIDVALUE;
 		return (AME_INVALIDVALUE);
-	}
+	}*/
 
-	if (AM_fd == -1)
+	if (AM_fd > 0)
 	{
 		AMerrno = AME_FD;
 		return (AME_FD);
@@ -469,17 +462,21 @@ int AM_DeleteEntry(int AM_fd, char*value, RECID recId)
 //-------------------------------
 
 	/* To find the pagenum and the indexNo of the key to be deleted if there is*/
-	err = find_leaf(AM_fd, value, attrType, attrLength /*, &pagenum, &pagebuf, &index???*/);
-	if( err != AME_OK) 
-	{
-		Amerrno = err;
-		return err;
-	}
-	/* To check if it returns error value */
-	if( err= PF_GetThisPage(AM_fd, /*pointer to get pageId*/ &pagebuf) != PFE_OK)
+	if ((err = find_leaf(AM_fd, value, &pagenum, &pagebuf, &index ) ) != AME_OK)
 		{
 		AMerrno = err;
 		return err;
+	}
+	/* To check if it returns error value */
+	if( err = PF_GetThisPage(AM_fd, /*pointer to get pageId*/, pagebuf) != PFE_OK)
+		{
+		AMerrno = err;
+		return err;
+	}
+	//TODO
+	if (next_record == -1){
+		AMerrno = AME_KEYNOTFOUND;
+		return AME_sKEYNOTFOUND;
 	}
 	//TODO
 		//if P == recId ,ccompare,set pointer recId etc...
@@ -519,8 +516,6 @@ int AM_OpenIndexScan(int AM_fd, int op, char *value)
 	}
 
 //------------------------------------------------------------------
-
-
 	// to find a free place in the scan table
 	for( i = 0; i < MAXSCANS; i++)				
 		if(scan_table[i].is_empty) break;	
@@ -532,43 +527,70 @@ int AM_OpenIndexScan(int AM_fd, int op, char *value)
 		return AME_SCANTABLEFULL;					
 	} 	
 
+	if( value != NULL)
+		if( !(AM_scan_table[i].value = malloc(AM_scan_table[i].attrLength)) )
+		{
+			AMerrno = AME_NOMEM;
+			return AME_NOMEM;
+		}
+
+	memcpy(AM_scan_table[i].value, value, AM_scan_table[i].attrLength);
 	
-	scan_table[i].value = malloc(scan_table[i].attrLength);
-	if (!scan_table[i].value)  // if value is NULL??
-	{
-		AMerrno = AME_NOMEM;
-		return AME_NOMEM;
-	}
+	AM_scan_table[i].fd = AM_fd;				
+	AM_scan_table[i].op = op;
+	AM_scan_table[i].index = -1;		//last record or last bucket number 
 
-	memcpy(scan_table[i].value, value, scan_table[i].attrLength);
+	//AM_scan_table[i].attrType = attrType;
+	//AM_scan_table[i].attrLength = attrLength;
 	
-	scan_table[i].fd = AM_fd;				
-	scan_table[i].op = op;
-	scan_table[i].index = -1;		//last record or last bucket number 
-
-	//scan_table[i].attrType = attrType;
-	//scan_table[i].attrLength = attrLength;
-
+	//AM_scan_table[i].prev_record = ;
+	//AM_scan_table[i].last_pagenum = ;
+	
 	//open an index scan over the index
 	// The scan descriptor returned is an index into the index scan table (in HF layer similar)
 	// If the index scan table is full, AM error code is returned in place of a scan descriptor
 	//the value parameter will point to a (binary) value that indexed attribute values are to be compared with
 	//The scan will return the record ids of those records whose indexed attribute value matches the value parameter in the desired way
-
-	//case on OP
+//case on OP
 	switch (op)	//needed?? TODO
 	{
-		//case EQ:
+		case EQ_OP:
+				{
+					//Value is not in the leaf , no match
+					if(err != AME_KEYNOTFOUND)
+					AM_scan_table[i].is_empty = /*OVER*/;
+					else
+					{
+						AM_scan_table[i].pageId = pagenum;
+						//AM_scan_table[i].next_index = index;
+						//bcopy(pagebuf + sizeof(node_header)+(index-1)*rec_size + attrLength);
+						AM_scan_table[i].cur_index = index;
+						//AM_scan_table[i].prev_pagenum= pagenum;
+						//AM_scan_table[i].prev_index = index;
+					}
+					break;
+				}
 			break;
-		//case LT: 
+		case LT_OP:
+				{
+					/*AM_scan_table[i].pageId = leftmost_pagenum;
+					AM_scan_table[i].next_index = 1;
+					AM_scan_table[i].cur_index = 1;
+					if( find_pagenum != leftmost_pagenum)
+					{
+						if ( (err = PF_GetThisPage(AM_fd, leftmost_pagenum, &pagebuf) )!=PFE_OK)
+						AMerrno = err;
+						return err;
+					}*/
+				}
 			break;
-		//case GT:
+		case GT_OP:
 			break;
-		//case LTQ:
+		//case LT_OP:
 			break;
-		//case GTQ: 
+		//case GT_OP: 
 			break;
-		//case NQ: 
+		//case NE_OP: 
 			break;
 		//default: 
 			//AMerrno = AME_INVALIDOP; //invalid op to scan
@@ -578,10 +600,9 @@ int AM_OpenIndexScan(int AM_fd, int op, char *value)
 	//errVal = PF_UnpinPage(AM_fd, find_paagenum, FALSE);
 	//AM_ErrorCheck;
 	
-	scan_table[i].is_empty = 0;
+	AM_scan_table[i].is_empty = 0;
 	return i;		
 }
-
 RECID AM_FindNextEntry(int scanDesc)
 {
 	//returns record id of the next record that satisfied the confitions specified for an index scan associated with scanDesc
@@ -643,10 +664,10 @@ RECID AM_FindNextEntry(int scanDesc)
 	/* find a valid entry */
 
 	/* the end of node (last node) */
-		if(scan_table->index == (PAGE_SIZE - sizeof(struct node_header))/((scan_table->attrLength)+sizeof(int)) ) //check!  index == a record is a pair <v, p>
+		if(AM_scan_table->index == (PAGE_SIZE - sizeof(struct node_header))/((AM_scan_table->attrLength)+sizeof(int)) ) //check!  index == a record is a pair <v, p>
 		{
 			next_leaf_page = ((struct node_header *)(pagebuf))->pageId;  // node get next block
-			if( (err = PF_UnpinPage(scan_table->fd, scan_table->pageId, FALSE) != PFE_OK) )// unpin block
+			if( (err = PF_UnpinPage(AM_scan_table->fd, AM_scan_table->pageId, FALSE) != PFE_OK) )// unpin block
 			{
 				AMerrno = err;
 				return err;
@@ -654,14 +675,14 @@ RECID AM_FindNextEntry(int scanDesc)
 		
 			if (next_leaf_page == -1 )	return AME_EOF;
 
-			scan_table->pageId = next_leaf_page;
-			scan_table->index -1;
+			AM_scan_table->pageId = next_leaf_page;
+			AM_scan_table->index -1;
 		//continue;	
 		}
 		//TODO with a pair of <p , v> ???
 		recId = (*(int)((char*)(pagebuf) + sizeof(struct node_header) + (index *(attrLength + sizeof(int) ) ) + (attrLength) ) ); //node gets pointer (recId)
 		/* unpin the current page*/
-		if( (err = PF_UnpinPage(scan_table->fd, scan_table->pageId, FALSE) != PFE_OK) )
+		if( (err = PF_UnpinPage(AM_scan_table->fd, AM_scan_table->pageId, FALSE) != PFE_OK) )
 		{
 			AMerrno = err;
 			return err;
@@ -706,62 +727,76 @@ static int find_leaf(int AM_fd,char *value, char attrType, int attrLength, int *
     
     //..TODO
 
-    /* To get the root of the B+ tree */
-    err = PF_GetFirstPage(AM_fd, pagenum, pagebuf);
-    AM_ErrorCheck;
+    	struct node_header nodeheader, *nh;	/* the local pointer to the node header */
+	nh = &nodeheader;
+    //..TODO
 
-    while(1)
+    /* To get the root of the B+ tree */
+    if ( (err = PF_GetFirstPage(AM_fd, pagenum, pagebuf)) != PFE_OK) //GetThisPage??
+	{
+		AMerrno = err;
+		return AME_PF;
+	}
+
+	if (**pagebuf == 'L') //If root is a leaf page
+		bcopy(*pagebuf, nh, sizeof(node_header));
+	else 
+
+    while(1) //or **pagebuf != L
     {
-        //..TODO
-        if( (err = PF_GetThisPage(fd, pagenum, FALSE)) != PFE_OK ) return err;
-                    
-        if( ( (struct node_header*)(pagebuf) )->pageType == LEAF ) //if root is a leaf page
+        //find the next page to be foollowed 
+		//TODO
+        if( (err = PF_GetThisPage(AM_fd, *pagenum, FALSE)) != PFE_OK ) return err;
+
+		if( ( err = PF_UnpinPage(AM_fd, *pagenum, FALSE)) != PFE_OK) return err;
+		//set pagenum to the next page to be followed
+		//TODO
+        if( ( (struct node_header*)(pagebuf))->pageType == LEAF ) //if root is a leaf page
         {
             // TODO
-        }
-
+        }else {}
     }
 }
 static int compare(char attrType, void *value1, void *value2, int op)
-{
-    int ret, res;
+{int res, com;
     switch (attrType)
     {
         case 'c':
-            res = strncmp (value 1, value2, attrLength);
+            com = strcmp(value1, value2/*, attrLength*/);
         case 'i':
-            if (*(int *)value1 == *(int*)value2)        res = 0;
-            else if (*(int *)value1 > *(int *)value2)   res = 1;
-            if(*(int *)value1 < *(int *)value2)         res = -1;
+            if (*(int *)value1 == *(int*)value2)        com = 0;
+            else if (*(int *)value1 > *(int *)value2)   com = 1;
+            if(*(int *)value1 < *(int *)value2)         com = -1;
 
         case 'f':
-            if (*(float *)value1 == *(float *)value2)       res = 0;
-            else if (*(float *)value1 > *(float *)value2)   res = 1;
-            if(*(float *)value1 < *(float *)value2)         res = -1;
-            
+            if (*(float *)value1 == *(float *)value2)       com = 0;
+            else if (*(float *)value1 > *(float *)value2)   com = 1;
+            if(*(float *)value1 < *(float *)value2)         com = -1;
+        
             break;
     }
 
     switch(op)
     {
-        case LT:
-            ret = (res < 0)     //low   not foubd
-            break:
-        case LEQ:
-            ret = ( res < 0 || res == 0);
+        case LT_OP:
+            res = (com < 0);    //low   not foubd
             break;
-        case GT:
-            ret = ( res > 0 || res == 0 );
+        case LE_OP:
+            res = ( com < 0 || com == 0);
             break;
-        case GEQ:
-            ret = (res>0 || res ==0);
+        case GT_OP:
+            res = ( com > 0 || com == 0 );
             break;
-        case EQ: 
-            ret = (res == 0);       //low found
+        case GE_OP:
+            res = (com > 0 || com ==0);
             break;
+        case EQ_OP: 
+            res = (com == 0);       //low found
+            break;
+		case NE_OP:
+			res = (com != 0);
     }
-    return ret;
-
+    return res;
 }
 
 static int insert_value_into_leaf(int fd, int pagenum, void *value, int p, char attrType, int attrLength, char *extra_page, void *value2)
