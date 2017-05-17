@@ -10,17 +10,16 @@
 #include "bf.h"
 #include "am.h"
 //#include "hf.h""
-#include "amheader.h"
 
 #define INNER 'I'
 #define LEAF 'L'
 //#define NULL ((void *)0)
-#define AM_ErrorCheck if (err != PFE_OK) {AMerrno = err; return AME_PF;}
+//#define AM_ErrorCheck if (err != PFE_OK) {AMerrno = err; return AME_PF;}
 
 struct node_header{
-	char pageType;			/* type of node, inner or leaf */
-	int  numRecords;		/* how many records in the node */
-	int	 pageId;			/* next leaf node or the last pointer of an inner node */
+	char 	pageType;		/* type of node, inner or leaf */
+	int  	numRecords;		/* how many records in the node */
+	int	pageId;			/* next leaf node or the last pointer of an inner node */
 
 	//int depth;
 	//int attrLength;
@@ -28,28 +27,28 @@ struct node_header{
 } node_header;
 
 struct open_index{
-	int 	depth;					// the total depth of B+ tree index
-	int		is_empty;					// the index exists or not
+	int 	depth;				// the total depth of B+ tree index
+	int	is_empty;			// the index exists or not
 	int 	total_numpages;			// total number of blocks
 	int 	max_records;			// max number of records in the index
 	int 	max_numpages;			// total number of pages in the file
-	char 	attrType;				// the type of value
-	char 	*filename;				// the file name of the index
-	int 	attrLength;				// the size of value in bytes
+	char 	attrType;			// the type of value
+	char 	*filename;			// the file name of the index
+	int 	attrLength;			// the size of value in bytes
 	//char *hash_table;
 };
 struct open_index AM_index_table[MAXOPENFILES];
 
 struct scan_entryindex{
 	int 	fd;
-	int 	is_empty;				/* 1 = true = empty  0 = false = not empty (exists) */
-	int 	op;				/* to compare the index with the value */
+	int 	is_empty;		/* 1 = true = empty  0 = false = not empty (exists) */
+	int 	op;			/* to compare the index with the value */
 	char 	*value;			/* the value which will be compared */
 	char 	attrType;		
 	int 	attrLength;		/* the size of key */
 	int 	index;
 	
-	int		pageId;		//next leaf page
+	int	pageId;			//next leaf page
 	//int 	last_pagenum;
 	//int 	next_pagenum;
 	//int 	lastBucketNum;
@@ -126,7 +125,7 @@ void AM_Init(void)
 /*Create an index numbered indexNo on the file filename*/
 int AM_CreateIndex(char* filename, int indexNo, char attrType, int attrLength, bool_t isUnique)
 {
-	int 	err;		/* returns the error*/
+	int 	err;			/* returns the error*/
 	int 	AM_fd;			/* AM file descriptor*/	
 	int 	pagenum;		/* (root_block) page number of the root page (first page)*/
 	char 	*pagebuf;		/* (root_node)  buffer to hold a page*/
@@ -193,9 +192,9 @@ int AM_CreateIndex(char* filename, int indexNo, char attrType, int attrLength, b
 
 	/* Initialize */
 	memset(pagebuf , 0 , PAGE_SIZE);
-	((/*typedef*/ struct node_header *)pagebuf)->numRecords = records_in_node;
-	((/*typedef*/ struct node_header *)pagebuf)->pageType= LEAF;
-	((/*typedef*/ struct node_header *)pagebuf)->pageId = -1;	// next leaf page or the last pointer of an inner node
+	((struct node_header *)pagebuf)->numRecords = records_in_node;
+	((struct node_header *)pagebuf)->pageType= LEAF;
+	((struct node_header *)pagebuf)->pageId = -1;	// next leaf page or the last pointer of an inner node
 
 	//((typedef struct node_header *)pagebuf)->depth = 0;
 	//((typedef struct node_header *)pagebuf)->totalBlock = 0;
@@ -232,7 +231,7 @@ int AM_DestroyIndex(char *filename, int indexNo)
 	if( !(index_filename = filename_size(filename, indexNo)) )return AMerrno;
 	//..check smth else..?
 
-	sprintf(index_filename, "%s.%d", filename, indexNo);  //needed?
+	sprintf(index_filename, "%s.%d", filename, indexNo);  
 	
 	err = PF_DestroyFile(index_filename);
 	AM_ErrorCheck;
@@ -352,15 +351,15 @@ int AM_InsertEntry(int AM_fd, char *value, RECID recId)
 		return AME_INVALIDVALUE;
 	}
 
-	/**if (AM_fd == -1)
+	if (AM_fd < 0 )
 	{
 		AMerrno = AME_FD;
-	return AME_FD;
-	}*/
+		return AME_FD;
+	}
 	
 //--- Check Attributes-------------------------------------------------
 	/*  Check the parameters */ //extract the attrType and length from where? AM_fd??
-	if (( attrType != 'c') && (attrType != 'i') && (attrType != 'f'))
+	/*if (( attrType != 'c') && (attrType != 'i') && (attrType != 'f'))
 		{
 			AMerrno = AME_INVALIDATTRTYPE;
 			return(AME_INVALIDATTRTYPE);
@@ -371,23 +370,20 @@ int AM_InsertEntry(int AM_fd, char *value, RECID recId)
 			return(AME_INVALIDATTRLENGTH);
 		}
 	if (attrLength != 4 && (attrType != 'i' || attrType != 'f')) /* 4 for 'i' or 'f' */
-	{
+	/*{
 		AMerrno = AME_INVALIDATTRLENGTH;
 		return(AME_INVALIDATTRLENGTH);
 	}
 	else			
 		if (attrType != 'c' &&  (attrLength < 1 || attrLength != 4))	/* 1-255 for 'c' 	*/			
-		{
+		/*{
 			AMerrno = AME_INVALIDATTRLENGTH; 
 			return(AME_INVALIDATTRLENGTH);
-		}
+		}*/
 
 //-----------FIND LEAF-------------------------------------
 	/* To find the leaf node for the key */
-	err = find_leaf(AM_fd,value, attrType, attLength /*, &pagenum, &pagebuf, &index*/); 
-	
-	/* Check error */
-	if (err != AME_OK )
+	if ( (err = find_leaf(AM_fd,value, &pagenum, &pagebuf, &index) ) != AME_OK) 
 	{
 		AMerrno = err;
 		return err;
