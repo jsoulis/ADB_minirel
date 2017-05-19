@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "minirel.h"
 
@@ -15,9 +16,10 @@
 typedef struct HFhdr_str {
   int numrecs;
   int numpages;
+  int maxNumRecords;
   int recsize;
-  int firstPage;
-  int lastPage;
+  //int firstPage;
+  //int lastPage;
 } HFhdr_str;
 
 typedef struct HFftab_ele {
@@ -29,6 +31,7 @@ typedef struct HFftab_ele {
   bool_t scanActive; /*TRUE if scan is active*/
 }
 
+/*table keeps track of OPEN HF files */
 HFftab_ele file_table[HF_FTAB_SIZE];
 
 void HF_Init(void) {
@@ -46,9 +49,9 @@ void HF_Init(void) {
 
 int HF_CreateFile(char *filename, int recSize) {
   HFhdr_str *hdr;
-  int fd;
-  int *pagenum;
-  char **pagebuf;
+  int fd, maxNumRecords;
+  int pagenum;
+  char *pagebuf;
 
   if(recSize >= PAGE_SIZE) {
     return HFE_RECSIZE;
@@ -62,18 +65,23 @@ int HF_CreateFile(char *filename, int recSize) {
     return HFE_PF;
   }
 
-  if (PF_AllocPage(fd, pagenum, pagebuf) != 0)
+  if (PF_AllocPage(fd, &pagenum, &pagebuf) != 0)
   {
     return HFE_PF;
   }
+
+  /*calculate the max number of records for data page*/
+  /*may need to be recSize + 2 in order to account for '/0'*/
+  maxNumRecords = floor(PAGE_SIZE/(recSize + 1));
 
   hdr = (HFhdr_str *) pagebuf;
 
   hdr->numrecs = 0;
   hdr->numpages = 0;
   hdr->recSize = recSize;
-  hdr->firstPage = -1;
-  hdr->lastPage = -1;
+  //hdr->firstPage = -1;
+  //hdr->lastPage = -1;
+  hdr->maxNumRecords = maxNumRecords;
 
   if (PF_CloseFile(fd) != 0)
   {
@@ -86,12 +94,6 @@ int HF_CreateFile(char *filename, int recSize) {
 int HF_DestroyFile(char *filename) {
   HFftab_ele *file;
   int i;
-
-  /* Not sure if we need this or not
-  if (!file_exists(filename)) {
-    return HFE_FILE;
-  }
-  */
 
   /*check to see if file is open */
   for (i = 0; i < HF_FTAB_SIZE; ++i) {
@@ -112,8 +114,8 @@ int HF_OpenFile(char *filename) {
  //header data should be copied to the file table.
  int HFfd, i, fd;
  HFftab_ele *file;
- int *pagenum;
- char **pagebuf;
+ int pagenum;
+ char *pagebuf;
  HFhdr_str *hdr;
 
  file = NULL;
@@ -139,19 +141,21 @@ int HF_OpenFile(char *filename) {
  file->PFfd = fd;
 
  /*get header page for hf file */
- if (PF_GetFirstPage(fd, pagenum, pagebuf) !=0) {
+ if (PF_GetFirstPage(fd, &pagenum, &pagebuf) !=0) {
    return HFE_PF;
  }
 
+ /*we now are pointing to header info we already wrote
+ when we created the file */
  hdr = (HFhdr_str *) pagebuf;
 
  file->hdr.numrecs = hdr->numrecs;
  file->hdr.numpages = hdr->numpages;
  file->hdr.recsize = hdr->recsize;
- file->hdr.firstPage = hdr->firstPage;
- file->hdr.lastPage = hdr->lastPage;
+ //file->hdr.firstPage = hdr->firstPage;
+ //file->hdr.lastPage = hdr->lastPage;
 
- file->hdrchanged = TRUE;
+ file->hdrchanged = FALSE;
  file->scanActive = FALSE;
 
  return HFfd;
@@ -161,8 +165,8 @@ int HF_OpenFile(char *filename) {
 int HF_CloseFile(int HFfd) {
   HFhdr_str *hdr;
   HFftab_ele *file;
-  int *pagenum;
-  char **pagebuf;
+  int pagenum;
+  char *pagebuf;
 
   /* ensure that the HFfd is valid and open*/
   if (HFfd < 0 || HFfd >= HF_FTAB_SIZE) {
@@ -173,19 +177,26 @@ int HF_CloseFile(int HFfd) {
     return HFE_FILENOTOPEN;
   }
 
-  /*write back header of file if it changed*/
+  if(file_table[HFfd].scanActive) {
+    return HFE_SCANOPEN;
+  }
+
+  /*write back header of file if it was changed in table*/
   file = &file_table[HFfd];
   if(file->hdrchanged) {
-    if(PF_GetFirstPage(file->PFfd, pagenum, pagebuf)!=0)
+    if(PF_GetFirstPage(file->PFfd, &pagenum, &pagebuf)!=0)
     {
       return HFE_PF;
     }
     hdr = (HFhdr_str *) pagebuf;
-    file->hdr.numrecs = hdr->numrecs;
-    file->hdr.numpages = hdr->numpages;
-    file->hdr.recsize = hdr->recsize;
-    file->hdr.firstPage = hdr->firstPage;
-    file->hdr.lastPage = hdr->lastPage;
+
+    /*update file based on whats in open HF table entry*/
+    hdr->numrecs = file->hdr.numrecs;
+    hdr->numpages = file->hdr.numpages;
+    hdr->recsize = file->hdr.recsize;
+    hdr->firstPage = file->hdr.firstPage;
+    hdr->lastPage = file->hdr.lastPage;
+
   }
 
   if (PF_CloseFile(file->PFfd) != 0) {
@@ -200,8 +211,85 @@ int HF_CloseFile(int HFfd) {
 }
 
 RECID HF_InsertRec(int HFfd, char *record) {
-  
+HFftab_ele *file;
+HFhdr_str *hdr;
+RECID recid;
+char *pagebuf;
+int pagenum, i, j;
 
+if (HFfd < 0 || HFfd >= HF_FTAB_SIZE) {
+  return HFE_FD;
+}
+
+if (!file_table[HFfd].valid) {
+  return HFE_FILENOTOPEN;
+}
+
+file = file_table[HFfd];
+hdr = file->hdr;
+
+bool_t bitmapArray[hdr->maxNumRecords];
+char recordArray[hdr->maxNumRecords][hdr->recsize];
+
+/*case in which there are no data pages*/
+if(hdr->numpages == 0) {
+  if (PF_AllocPage(file->PFfd, &pagenum, &pagebuf) != 0) {
+    return HFE_PF;
+  }
+  ++(hdr->numpages);
+  bitmapArray = (bitmapArray *) pagebuf;
+  recordArray = bitmapArray + 1;
+  /*initialize bitmap to show empty page */
+  for (i = 0; i < hdr->maxNumRecords; i++) {
+    bitmapArray[i] = TRUE;
+  }
+  bitmapArray[0] = FALSE;
+  strcpy(recordArray[0], record);
+  ++(hdr->numrecs);
+  recid.recnum = 0;
+  recid.pagenum = 0;
+  file->hdrchanged = TRUE;
+  return recid;
+}
+/*there are data pages and not all are full*/
+else {
+  for (i = 0; i < file->numpages; i++) {
+    if (PF_GetThisPage(file->PFfd, i, &pagebuf) != 0) {
+      return HFE_PF;
+    }
+    bitmapArray = (bitmapArray *) pagebuf;
+    recordArray = bitmapArray + 1;
+    for (j = 0; j < hdr->maxNumRecords; j++) {
+      if(bitmapArray[j]) {
+        recid.recnum = j;
+        recid.pagenum = i;
+        bitmapArray[j] = FALSE;
+        strcpy(recordArray[j], record);
+        ++(hdr->numrecs);
+        file->hdrchanged = TRUE;
+        return recid;
+      }
+    }
+  }
+  /*There are data pages but are ALL full */
+  if (PF_AllocPage(file->PFfd, &pagenum, &pagebuf) != 0) {
+    return HFE_PF;
+  }
+  ++(hdr->numpages);
+  bitmapArray = (bitmapArray *) pagebuf;
+  recordArray = bitmapArray + 1;
+  /*initialize bitmap to show empty page */
+  for (i = 0; i < hdr->maxNumRecords; i++) {
+    bitmapArray[i] = TRUE;
+  }
+  bitmapArray[0] = FALSE;
+  strcpy(recordArray[0], record);
+  ++(hdr->numrecs);
+  recid.recnum = 0;
+  recid.pagenum = (hdr->numpages) - 1;
+  file->hdrchanged = TRUE;
+  return recid;
+}
 }
 
 int HF_DeleteRec(int HFfd, RECID recid) {
@@ -209,6 +297,43 @@ int HF_DeleteRec(int HFfd, RECID recid) {
 }
 
 RECID HF_GetFirstRec(int HFfd, char *record) {
+  HFftab_ele *file;
+  RECID recid;
+  int i, j;
+  char *pagebuf;
+
+  if (HFfd < 0 || HFfd >= HF_FTAB_SIZE) {
+    return HFE_FD;
+  }
+
+  if (!file_table[HFfd].valid) {
+    return HFE_FILENOTOPEN;
+  }
+
+  file = file_table[HFfd];
+  bool_t bitmapArray[file->hdr.maxNumRecords];
+  char recordArray[file->hdr.maxNumRecords][file->hdr.recSize];
+
+  if (file->numpages == 0)
+  {
+    return HFE_EOF;
+  }
+//get first page and then look for first valid record.
+for (i = 0; i < file->numpages; i++) {
+  if (PF_GetThisPage(file->PFfd, i, &pagebuf) != 0) {
+    return HFE_PF;
+  }
+  bitmapArray = (bitmapArray *) pagebuf
+  recordArray = bitmapArray + 1;
+  for (j = 0; j < file->hdr.maxNumRecords; j++) {
+    if(!bitmapArray[j]) {
+      recid.recnum = j;
+      recid.pagenum = i;
+      return recid;
+    }
+  }
+}
+return HFE_EOF;
 
 }
 
@@ -233,5 +358,25 @@ int HF_CloseFileScan(int scanDesc) {
 }
 
 bool_t HF_ValidRecId(int HFfd, RECID recid) {
+  HFftab_ele *file;
 
+  if (HFfd < 0 || HFfd >= HF_FTAB_SIZE) {
+    return HFE_FD;
+  }
+
+  if (!file_table[HFfd].valid) {
+    return HFE_FILENOTOPEN;
+  }
+
+  file = &file_table[HFfd];
+  /* The recid presented should have a pagenum and recnum
+  smaller than what is indicated in header for the HF file*/
+  if (file->hdr.numpages > recid.pagenum) {
+    if (file->hdr.maxNumRecords > recid.recnum) {
+      return TRUE;
+    }
+  }
+  else {
+    return FALSE;
+  }
 }
