@@ -25,7 +25,7 @@ int AM_CreateIndex(char *filename, int indexNo, char attrType, int attrLength,
   }
 
   /* add 1 to size to fit NULL character */
-  filenameWithIndex = malloc(sizeofFilenameWithIndex(filename, indexNo) + 1);
+  filenameWithIndex = malloc(sizeofFilenameWithIndex(filename, indexNo));
   setFilenameWithIndex(filename, indexNo, filenameWithIndex);
 
   if (PF_CreateFile(filenameWithIndex) != PFE_OK) {
@@ -67,4 +67,19 @@ int AM_CreateIndex(char *filename, int indexNo, char attrType, int attrLength,
   /* stop complaining about unused variable */
   (void)isUnique;
   return AME_OK;
+}
+
+int AM_DestroyIndex(char *filename, int indexNo) {
+  int returnCode = AME_OK;
+  char *filenameWithIndex = malloc(sizeofFilenameWithIndex(filename, indexNo));
+  setFilenameWithIndex(filename, indexNo, filenameWithIndex);
+  /* PF won't destroy a pinned file. So if we have the root pinned we can just
+   * check like this */
+  if (PF_DestroyFile(filenameWithIndex) != PFE_OK) {
+    AMerrno = AME_PF;
+    returnCode = AMerrno;
+  }
+
+  free(filenameWithIndex);
+  return returnCode;
 }
