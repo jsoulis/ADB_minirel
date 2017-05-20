@@ -90,3 +90,41 @@ int AM_DestroyIndex(char *filename, int index_no) {
   free(filename_with_index);
   return return_code;
 }
+
+int AM_OpenIndex(char *filename, int index_no) {
+  char *filename_with_index;
+  int i, fd, pagenum, am_fd = -1;
+
+  /* Check if there is space in table */
+  for (i = 0; i < AM_ITAB_SIZE; ++i) {
+    if (!index_table[i].in_use) {
+      am_fd = i;
+      break;
+    }
+  } 
+  if (am_fd == -1) {
+    AMerrno = AME_FULLTABLE;
+    return AMerrno;
+  }
+
+
+  filename_with_index = malloc(sizeof_filename_with_index(filename, index));
+  set_filename_with_index(filename, index_no, filename_with_index);
+
+  fd = PF_OpenFile(filename_with_index);
+  if (fd < 0) {
+    free(filename_with_index);
+
+    AMerrno = AME_PF;
+    return AMerrno;
+  }
+
+  if (PF_GetFirstPage(fd, &pagenum, (char**)&index_table[am_fd].root) != PFE_OK) {
+    free(filename_with_index);
+
+    AMerrno = AME_PF;
+    return AMerrno;
+  }
+
+  return am_fd;
+}
