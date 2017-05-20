@@ -179,43 +179,44 @@ static int next_page(char *pagebuf)
 	return ((struct node_header *)pagebuf)->pageId;
 }
 
-#define node_v(, i, attrLen) \
-	((char *) (block) + sizeof(struct node_header) \
+#define node_v(pagebuf, i, attrLen) \
+	((char *) (pagebuf) + sizeof(struct node_header) \
 	 + (i)*((attrLen) + sizeof(int)))
 
 
-#define node_p(block, i, attrLen) \
-	(*(int *)((char *) (block) + sizeof(struct node_header) \
+#define node_p(pagebuf, i, attrLen) \
+	(*(int *)((char *) (pagebuf) + sizeof(struct node_header) \
 	 + (i)*((attrLen) + sizeof(int)) + (attrLen)))
 
 
-#define set_v(block, i, val, attrLen) \
-	memcpy(node_v((block), (i), (attrLen)), (val), (attrLen))
+#define set_v(pagebuf, i, val, attrLen) \
+	memcpy(node_v((pagebuf), (i), (attrLen)), (val), (attrLen))
 
 
-#define set_p(block, i, val, attrLen) \
-	(node_p((block), (i), (attrLen)) = (val))
 
-	/* gets block's Vi */
-#define two_nodes_v(block, i, attrLen) \
-	((char *) (block) + sizeof(struct two_nodes_header) \
+#define set_p(pagebuf, i, val, attrLen) \
+	(node_p((pagebuf), (i), (attrLen)) = (val))
+
+
+#define two_nodes_v(pagebuf, i, attrLen) \
+	((char *) (pagebuf) + sizeof(struct two_nodes_header) \
 	 + (i)*((attrLen) + sizeof(int)))
 
-/* gets block's Pi */
-#define two_nodes_p(block, i, attrLen) \
-	(*(int *)((char *) (block) + sizeof(struct two_nodes_header) \
+
+#define two_nodes_p(pagebuf, i, attrLen) \
+	(*(int *)((char *) (pagebuf) + sizeof(struct two_nodes_header) \
 	 + (i)*((attrLen) + sizeof(int)) + (attrLen)))
 
-/* sets block's Vi to val */
-#define set_two_v(block, i, val, attrLen) \
-	memcpy(two_nodes_v((block), (i), (attrLen)), (val), (attrLen))
 
-/* sets block's Pi to val */
-#define set_two_p(block, i, val, attrLen) \
-	(two_nodes_p((block), (i), (attrLen)) = (val))
+#define set_two_v(pagebuf, i, val, attrLen) \
+	memcpy(two_nodes_v((pagebuf), (i), (attrLen)), (val), (attrLen))
 
 
-/*int pointer_value(int pv, char *pagebuf, int i, int attrLength)
+#define set_two_p(pagebuf, i, val, attrLen) \
+	(two_nodes_p((pagebuf), (i), (attrLen)) = (val))
+
+
+/**int pointer_value(int pv, char *pagebuf, int i, int attrLength)
 {
 	int node_p, *pp_nodes, *vv_nodes;
 	int node_v;
@@ -223,7 +224,7 @@ static int next_page(char *pagebuf)
 	{
 		case p: //one pointer
 		
-			node_p = (*(int*)((char *)(pagebuf) + sizeof(struct node_header) + (i)*(attrLength + sizeof(int)) + attrLength ));
+			*node_p = (*(int*)((char *)(pagebuf) + sizeof(struct node_header) + (i)*(attrLength + sizeof(int)) + attrLength ));
 			return node_p;
 		
 		case v: //one value
