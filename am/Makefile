@@ -1,5 +1,5 @@
 # Makefile for AM layer
-LIB	= am
+LIB	= am1
 INCDIR	= ${MINIREL_HOME}/h
 INCS	= 
 SRCS	= am1.c
@@ -10,7 +10,7 @@ LIBS	= lib${LIB}.a ../pf/libpf.a ../hf/libhf.a ../bf/libbf.a
 #############################################################################
 # This macro definition can be overwritten by command-line definitions.
 CC	= gcc
-CFLAGS	= -g -ansi -pedantic -Wall -Werror -Wpedantic -Wextra
+CFLAGS	= -g -ansi -pedantic 
 #CFLAGS	= -O -ansi -pedantic
 #############################################################################
 
