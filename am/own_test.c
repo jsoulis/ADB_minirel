@@ -5,20 +5,22 @@
 void test_filename_size() {
   char *filename = "sweet"; /* strlen("sweet") = 5 */
 
-  assert(sizeofFilenameWithIndex(filename, 1) == 7);
-  assert(sizeofFilenameWithIndex(filename, 15) == 8);
+  /* It includes null character */
+  assert(sizeof_filename_with_index(filename, 1) == 8);
+  assert(sizeof_filename_with_index(filename, 15) == 9);
+  assert(sizeof_filename_with_index(filename, 100) == 10);
 }
 
 void test_filename_with_index() {
   char *filename = "test"; /* len 4 */
-  char updatedName1[7];
-  char updatedName2[9];
+  char updated_name_1[7];
+  char updated_name_2[9];
 
-  setFilenameWithIndex(filename, 1, updatedName1);
-  setFilenameWithIndex(filename, 537, updatedName2);
+  set_filename_with_index(filename, 1, updated_name_1);
+  set_filename_with_index(filename, 537, updated_name_2);
 
-  assert(strcmp("test.1", updatedName1) == 0);
-  assert(strcmp("test.537", updatedName2) == 0);
+  assert(strcmp("test.1", updated_name_1) == 0);
+  assert(strcmp("test.537", updated_name_2) == 0);
 }
 
 int main() {
