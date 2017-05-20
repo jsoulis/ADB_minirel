@@ -14,7 +14,10 @@ CFLAGS	= -g -ansi -pedantic
 #CFLAGS	= -O -ansi -pedantic
 #############################################################################
 
-all: lib${LIB}.a ${LIB}test
+all: lib${LIB}.a ${LIB}test own_test
+
+own_test: own_test.o lib${LIB}.a
+	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
 
 ${LIB}test: ${LIB}test.o lib${LIB}.a
 	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
