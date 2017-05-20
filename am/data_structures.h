@@ -7,15 +7,15 @@
 typedef struct
 {
   char *key;
-  int pageNum;
+  int page_num;
 } internal_node_key_value_pair;
 
 typedef struct
 {
-  int validEntries;
-  char keyType;
+  int valid_entries;
+  char key_type;
   /* Maximum size is 255 */
-  uint8_t keyLength;
+  uint8_t key_length;
   internal_node_key_value_pair *pairs;
 } internal_node;
 
@@ -27,16 +27,17 @@ typedef struct
 
 typedef struct
 {
-  int validEntries;
-  char keyType;
+  int valid_entries;
+  char key_type;
   /* Maximum size is 255 */
-  uint8_t keyLength;
-  int nextLeaf, prevLeaf;
+  uint8_t key_length;
+  int next_leaf, prev_leaf;
   internal_node_key_value_pair *pairs;
 } leaf_node;
 
 typedef struct
 {
+  bool_t in_use;
   int fd; /* fd of PF layer */
   internal_node *root;
 } index_table_entry;

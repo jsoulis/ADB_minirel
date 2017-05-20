@@ -3,7 +3,7 @@
 
 #include "string.h"
 
-int sizeofFilenameWithIndex(char* filename, int indexNo) {
+int sizeof_filename_with_index(char* filename, int indexNo) {
   /* +1 because a dot is added */
   int length = strlen(filename) + 1;
   while (indexNo) {
@@ -15,9 +15,10 @@ int sizeofFilenameWithIndex(char* filename, int indexNo) {
   return length + 1;
 }
 
-void setFilenameWithIndex(char *filename, int indexNo, char *updatedName) {
+void set_filename_with_index(char *filename, int indexNo, char *updatedName) {
   int backwardsIndex;
-  const int newLength = sizeofFilenameWithIndex(filename, indexNo);
+  /* Don't count NULL character */
+  const int newLength = sizeof_filename_with_index(filename, indexNo) - 1;
 
   strcpy(updatedName, filename);
   backwardsIndex = newLength;

@@ -11,75 +11,82 @@
 
 index_table_entry index_table[AM_ITAB_SIZE];
 
-void AM_Init() { HF_Init(); }
+void AM_Init() {
+  int i;
+  HF_Init();
 
-int AM_CreateIndex(char *filename, int indexNo, char attrType, int attrLength,
-                   bool_t isUnique) {
+  for (i = 0; i < AM_ITAB_SIZE; ++i) {
+    index_table[i].in_use = FALSE;
+  }
+}
+
+int AM_CreateIndex(char *filename, int index_no, char attr_type, int attr_length,
+                   bool_t is_unique) {
   internal_node *root;
   int fd, pagenum;
-  char *filenameWithIndex;
+  char *filename_with_index;
 
-  if (!(attrType == 'c' || attrType == 'i' || attrType == 'f') || (attrLength < 1 || attrLength > 255)) {
+  if (!(attr_type == 'c' || attr_type == 'i' || attr_type == 'f') || (attr_length < 1 || attr_length > 255)) {
     AMerrno = AME_INVALIDATTRTYPE;
     return AMerrno;
   }
 
   /* add 1 to size to fit NULL character */
-  filenameWithIndex = malloc(sizeofFilenameWithIndex(filename, indexNo));
-  setFilenameWithIndex(filename, indexNo, filenameWithIndex);
+  filename_with_index = malloc(sizeof_filename_with_index(filename, index_no));
+  set_filename_with_index(filename, index_no, filename_with_index);
 
-  if (PF_CreateFile(filenameWithIndex) != PFE_OK) {
-    free(filenameWithIndex);
+  if (PF_CreateFile(filename_with_index) != PFE_OK) {
+    free(filename_with_index);
 
     AMerrno = AME_PF;
     return AMerrno;
   }
 
-  fd = PF_OpenFile(filenameWithIndex);
+  fd = PF_OpenFile(filename_with_index);
   if (fd < 0) {
-    free(filenameWithIndex);
+    free(filename_with_index);
 
     AMerrno = AME_PF;
     return AMerrno;
   }
 
   if (PF_AllocPage(fd, &pagenum, ((char**)&root)) != PFE_OK) {
-    free(filenameWithIndex);
+    free(filename_with_index);
 
     AMerrno = AME_PF;
     return AMerrno;
   }
 
-  root->validEntries = 0;
-  root->keyType = attrType;
+  root->valid_entries = 0;
+  root->key_type = attr_type;
   /* max length is 255 */
-  root->keyLength = (uint8_t)attrLength;
+  root->key_length = (uint8_t)attr_length;
 
   /* Unpin and mark dirty */
   if (PF_UnpinPage(fd, pagenum, TRUE) != PFE_OK) {
-    free(filenameWithIndex);
+    free(filename_with_index);
 
     AMerrno = AME_PF;
     return AMerrno;
   }
 
-  free(filenameWithIndex);
+  free(filename_with_index);
   /* stop complaining about unused variable */
-  (void)isUnique;
+  (void)is_unique;
   return AME_OK;
 }
 
-int AM_DestroyIndex(char *filename, int indexNo) {
-  int returnCode = AME_OK;
-  char *filenameWithIndex = malloc(sizeofFilenameWithIndex(filename, indexNo));
-  setFilenameWithIndex(filename, indexNo, filenameWithIndex);
+int AM_DestroyIndex(char *filename, int index_no) {
+  int return_code = AME_OK;
+  char *filename_with_index = malloc(sizeof_filename_with_index(filename, index_no));
+  set_filename_with_index(filename, index_no, filename_with_index);
   /* PF won't destroy a pinned file. So if we have the root pinned we can just
    * check like this */
-  if (PF_DestroyFile(filenameWithIndex) != PFE_OK) {
+  if (PF_DestroyFile(filename_with_index) != PFE_OK) {
     AMerrno = AME_PF;
-    returnCode = AMerrno;
+    return_code = AMerrno;
   }
 
-  free(filenameWithIndex);
-  return returnCode;
+  free(filename_with_index);
+  return return_code;
 }
