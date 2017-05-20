@@ -17,7 +17,7 @@ CFLAGS	= -g -ansi -pedantic
 all: lib${LIB}.a ${LIB}test own_test
 
 own_test: 
-	$(CC) $(CFLAGS) own_test.c -o own_test
+	$(CC) $(CFLAGS) own_test.c -o own_test -I$(INCDIR)
 
 ${LIB}test: ${LIB}test.o lib${LIB}.a
 	$(CC) $(CFLAGS) -o $@ $< ${LIBS}
