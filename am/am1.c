@@ -27,7 +27,6 @@ struct root_node_header
 {
 	int root_block;
 };
-
 struct node_header{
 	char pageType;			/* type of node, inner or leaf */
 	int  numRecords;		/* how many records in the node */
