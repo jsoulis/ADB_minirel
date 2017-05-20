@@ -11,7 +11,8 @@ int sizeofFilenameWithIndex(char* filename, int indexNo) {
     indexNo /= 10;
   }
 
-  return length;
+  /* Fit null character too */
+  return length + 1;
 }
 
 void setFilenameWithIndex(char *filename, int indexNo, char *updatedName) {
