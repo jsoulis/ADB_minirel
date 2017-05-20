@@ -2,7 +2,7 @@
 LIB	= am
 INCDIR	= ${MINIREL_HOME}/h
 INCS	= 
-SRCS	= 
+SRCS	= am.c
 TESTS	= amtest.c
 OBJS	= ${SRCS:.c=.o}
 LIBS	= lib${LIB}.a ../pf/libpf.a ../hf/libhf.a ../bf/libbf.a
