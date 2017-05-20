@@ -26,10 +26,11 @@ void test_filename_with_index() {
 
 void test_max_node_count() {
   /* Header is size 16 without value pointers (because of aligning most probably)
-   * RECID is size 8 (pair size 12)
-   * Should result in (4096 - 14) / 12
+   * One extra RECID at the start, because not all are pairs
+   * RECID is size 8
+   * Should result in (4096 - 16 - 8) / pair_size
    */
-  assert(max_node_count(4) == 340);
+  assert(max_node_count(4) == 339);
   assert(max_node_count(15) == 177);
 }
 
