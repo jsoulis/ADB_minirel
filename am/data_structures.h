@@ -32,7 +32,7 @@ typedef struct
   /* Maximum size is 255 */
   uint8_t key_length;
   int next_leaf, prev_leaf;
-  internal_node_key_value_pair *pairs;
+  leaf_key_value_pair *pairs;
 } leaf_node;
 
 typedef struct
