@@ -108,7 +108,7 @@ int AM_OpenIndex(char *filename, int index_no) {
   }
 
 
-  filename_with_index = malloc(sizeof_filename_with_index(filename, index));
+  filename_with_index = malloc(sizeof_filename_with_index(filename, index_no));
   set_filename_with_index(filename, index_no, filename_with_index);
 
   fd = PF_OpenFile(filename_with_index);
@@ -127,4 +127,35 @@ int AM_OpenIndex(char *filename, int index_no) {
   }
 
   return am_fd;
+}
+
+int AM_CloseIndex(int am_fd) {
+  index_table_entry entry;
+
+  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE) {
+    AMerrno = AME_FD;
+    return AMerrno;
+  }
+
+
+  entry = index_table[am_fd];
+  if (!entry.in_use) {
+    AMerrno = AME_FD;
+    return AMerrno;
+  }
+
+  /* pagenum 0 should always be the root */ 
+  if (PF_UnpinPage(entry.fd, 0, FALSE) != PFE_OK) {
+    AMerrno = AME_FD;
+    return AMerrno;
+  }
+
+  if (PF_CloseFile(entry.fd) != PFE_OK) {
+    AMerrno = AME_FD;
+
+    return AMerrno;
+  }
+
+  entry.in_use = FALSE;
+  return AME_OK;
 }
