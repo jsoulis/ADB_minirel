@@ -57,6 +57,10 @@ int AM_CreateIndex(char *filename, int index_no, char attr_type, int attr_length
     return AMerrno;
   }
 
+  if (attr_type == 'f' || attr_type == 'i') {
+    attr_length = 4;
+  }
+
   root->valid_entries = 0;
   root->key_type = attr_type;
   /* max length is 255 */
