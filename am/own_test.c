@@ -2,6 +2,7 @@
 #include "stdint.h"
 #include "stdio.h"
 #include "utils.h"
+#include "unistd.h"
 #include "am.h"
 
 int AMerrno;
@@ -40,10 +41,22 @@ void test_max_node_count()
   assert(max_node_count(15) == 176);
 }
 
-void test_create_index()
+void test_create_destroy_index()
 {
+  unlink("success1.1"); unlink("success1.5"); unlink("success2.987");
+
   assert(AM_CreateIndex("fail1", 1, 'a', 1, FALSE) == AME_INVALIDATTRTYPE);
   assert(AM_CreateIndex("fail2", 1, 'c', 256, FALSE) == AME_INVALIDATTRLENGTH);
+  assert(AM_CreateIndex("success1", 1, 'c', 1, FALSE) == AME_OK);
+  assert(AM_CreateIndex("success1", 5, 'c', 1, FALSE) == AME_OK);
+  assert(AM_CreateIndex("success2", 987, 'c', 4, FALSE) == AME_OK);
+
+  assert(AM_DestroyIndex("success1", 1) == AME_OK); 
+  assert(AM_DestroyIndex("success1", 5) == AME_OK); 
+  assert(AM_DestroyIndex("success2", 987) == AME_OK);
+
+  assert(AM_DestroyIndex("wut", 1) == AME_PF);
+  assert(AM_DestroyIndex("success1", 2) == AME_PF);
 }
 
 int main()
@@ -54,7 +67,7 @@ int main()
 
   /* AM functions */
   AM_Init();
-  test_create_index();
+  test_create_destroy_index();
 
   printf("Passed all tests\n");
   return 0;
