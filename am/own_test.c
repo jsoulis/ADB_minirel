@@ -185,15 +185,16 @@ void test_open_close_scan() {
   assert(AM_OpenIndexScan(i, 7, (char*)&key) == AME_INVALIDOP);
 
   assert(AM_OpenIndexScan(i, EQ_OP, (char*)&key) == i);
-  assert(AM_OpenIndexScan(i, EQ_OP, (char*)&key) == AME_DUPLICATEOPEN);
 
   for (i = 1; i < MAXISCANS; ++i)
   {
     assert(AM_CreateIndex("scan", i, 'i', 4, FALSE) == AME_OK);
     assert(AM_OpenIndex("scan", i) == i);
 
-    assert(AM_OpenIndexScan(i, EQ_OP, (char *)&key) == 0);
+    assert(AM_OpenIndexScan(i, EQ_OP, (char *)&key) == i);
   }
+
+  assert(AM_OpenIndexScan(0, EQ_OP, (char *)&key) == AME_SCANTABLEFULL);
 
   assert(AM_CloseIndex(0) == AME_SCANOPEN);
   assert(AM_CloseIndexScan(0) == AME_OK);
