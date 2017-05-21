@@ -700,18 +700,19 @@ int AM_CreateIndex(char *filename, int indexNo, char attrType, int attrLength /*
 /*-----Create, Open, Allocate PF File------------------------------*/
 
 		/*	printf("%d", indexNo);*/
-AM_PrintError("Here is problem");
-err = PF_CreateFile(index_filename);
-	if ( (err ) != PFE_OK )/* problem starts here */
+	if ( (err = PF_CreateFile(index_filename)) != PFE_OK )/* problem starts here */
 	{
 		AMerrno = err;
 		return err;
 				}
+	AM_fd = PF_OpenFile(index_filename);
+	AM_PrintError("Here is problem");
 	/* Open the file from PF layer */
-	if ( ( AM_fd = err = PF_OpenFile(index_filename) ) < 0) 
+	if ( (AM_fd) < 0) 
 	{
-		AMerrno = err;
-		return err;
+		AM_PrintError("Here is problem2");
+		AMerrno = AME_PF ;
+		return AME_PF;
 	}
 	/*Allocate pages for the root*/
 	if( (err = PF_AllocPage(AM_fd, &pagenum, &pagebuf)) < 0)
@@ -721,7 +722,7 @@ err = PF_CreateFile(index_filename);
 		AMerrno = err;
 		return err;
 	}
-
+	
 	/*totalBlocks = 0; need?*/
 	/*check*/ 
 	records_in_node = num_records(attrLength); 
