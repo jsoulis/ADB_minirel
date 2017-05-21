@@ -8,10 +8,10 @@
 int sizeof_filename_with_index(char *filename, int indexNo) {
   /* +1 because a dot is added */
   int length = strlen(filename) + 1;
-  while (indexNo) {
+  do {
     ++length;
     indexNo /= 10;
-  }
+  } while (indexNo);
 
   /* Fit null character too */
   return length + 1;
@@ -26,11 +26,12 @@ void set_filename_with_index(char *filename, int indexNo, char *updatedName) {
   backwardsIndex = newLength;
 
   updatedName[backwardsIndex] = '\0';
-  while (indexNo) {
+  do {
     /* turn into ascii */
     updatedName[--backwardsIndex] = (indexNo % 10) + 48;
     indexNo /= 10;
-  }
+  } while (indexNo);
+
   updatedName[backwardsIndex - 1] = '.';
 }
 
