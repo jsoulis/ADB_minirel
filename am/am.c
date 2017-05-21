@@ -132,6 +132,15 @@ int AM_OpenIndex(char *filename, int index_no)
   filename_with_index = malloc(sizeof_filename_with_index(filename, index_no));
   set_filename_with_index(filename, index_no, filename_with_index);
 
+  for (i = 0; i < AM_ITAB_SIZE; ++i) {
+    if (index_table[i].filename && strcmp(index_table[i].filename, filename_with_index) == 0) {
+      free(filename_with_index);
+
+      AMerrno = AME_DUPLICATEOPEN;
+      return AMerrno;
+    }
+  }
+
   fd = PF_OpenFile(filename_with_index);
   if (fd < 0)
   {
@@ -151,6 +160,7 @@ int AM_OpenIndex(char *filename, int index_no)
 
   index_table[am_fd].in_use = TRUE;
   index_table[am_fd].fd = fd;
+  index_table[am_fd].filename = filename_with_index;
   return am_fd;
 }
 
@@ -186,7 +196,23 @@ int AM_CloseIndex(int am_fd)
   }
 
   entry.in_use = FALSE;
+  free(entry.filename);
+  entry.filename = 0;
   return AME_OK;
+}
+
+int AM_OpenIndexScan(int am_fd, int operation, char *key)
+{
+  (void)am_fd;
+  (void)operation;
+  (void)key;
+  return 0;
+}
+
+int AM_CloseIndexScan(int am_fd) 
+{
+  (void)am_fd;
+  return 0;
 }
 
 /*

@@ -43,6 +43,7 @@ typedef struct
 {
   bool_t in_use;
   int fd; /* fd of PF layer */
+  char *filename;
   internal_node *root;
 } index_table_entry;
 

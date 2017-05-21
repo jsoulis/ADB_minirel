@@ -72,7 +72,8 @@ void test_open_close_index()
   assert(AM_OpenIndex("fail", 1) == AME_PF);
 
   assert(AM_CreateIndex("success", 0, 'c', 1, FALSE) == AME_OK);
-  assert(AM_OpenIndex("success", 0) >= 0);
+  assert(AM_OpenIndex("success", 0) == 0);
+  assert(AM_OpenIndex("success", 0) == AME_DUPLICATEOPEN);
   /* No such index */
   assert(AM_OpenIndex("success", 1) == AME_PF);
 
@@ -169,19 +170,57 @@ void test_find_ptr_index()
   assert(*get_ptr_address(pairs, key_length, ptr_length, index) == 8);
 }
 
+void test_open_close_scan() {
+  int key = 1;
+  int i = 0;
+
+  assert(AM_OpenIndexScan(i, EQ_OP, (char*)&key) == AME_FD);
+
+  assert(AM_CreateIndex("scan", i, 'i', 4, FALSE) == AME_OK);
+  assert(AM_OpenIndexScan(i, EQ_OP, (char*)&key) == AME_FD);
+
+  assert(AM_OpenIndex("scan", i) == i);
+
+  assert(AM_OpenIndexScan(i, -1, (char*)&key) == AME_INVALIDOP);
+  assert(AM_OpenIndexScan(i, 7, (char*)&key) == AME_INVALIDOP);
+
+  assert(AM_OpenIndexScan(i, EQ_OP, (char*)&key) == i);
+  assert(AM_OpenIndexScan(i, EQ_OP, (char*)&key) == AME_DUPLICATEOPEN);
+
+  for (i = 1; i < MAXISCANS; ++i)
+  {
+    assert(AM_CreateIndex("scan", i, 'i', 4, FALSE) == AME_OK);
+    assert(AM_OpenIndex("scan", i) == i);
+
+    assert(AM_OpenIndexScan(i, EQ_OP, (char *)&key) == 0);
+  }
+
+  assert(AM_CloseIndex(0) == AME_SCANOPEN);
+  assert(AM_CloseIndexScan(0) == AME_OK);
+  assert(AM_CloseIndex(0) == AME_OK);
+  assert(AM_DestroyIndex("scan", 0));
+
+  for (i = 1; i < MAXISCANS; ++i)
+  {
+    assert(AM_CloseIndexScan(i) == AME_OK);
+    assert(AM_CloseIndex(i) == AME_OK);
+    assert(AM_DestroyIndex("scan", i));
+  }
+}
+
 int main()
 {
   test_filename_size();
   test_filename_with_index();
   test_max_node_count();
+  test_operation();
+  test_find_ptr_index();
 
   /* AM functions */
   AM_Init();
   test_create_destroy_index();
   test_open_close_index();
-
-  test_operation();
-  test_find_ptr_index();
+  test_open_close_scan();
 
   printf("Passed all tests\n");
   return 0;
