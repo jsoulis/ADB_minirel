@@ -27,6 +27,7 @@ struct root_node_header
 {
 	int root_block;
 };
+
 struct node_header{
 	char pageType;			/* type of node, inner or leaf */
 	int  numRecords;		/* how many records in the node */
@@ -625,29 +626,39 @@ void AM_Init(void)
 	for( i = 0; i < MAXSCANS; i++)
 	{
 	 AM_scan_table[i].value = NULL;
-	 AM_scan_table[i].attrType = FALSE;/*??*/
+	 AM_scan_table[i].attrType = FALSE;/* 0000 */
 	 AM_scan_table[i].attrLength = 0; /*AM_INVALIDPARA;*/
   	 AM_scan_table[i].op = 0; /* AM_INVALIDPARA;*/
  	 AM_scan_table[i].fd = 0; /*AM_INVALIDPARA;*/
-
-	AM_scan_table[i].is_empty = 1; 
+	 AM_scan_table[i].is_empty = 1; 
 	}
 	AMerrno = AME_OK;
 }
 /*------------------------------------------------------------------------------*/
 
 /*Create an index numbered indexNo on the file filename*/
-int AM_CreateIndex(char* filename, int indexNo, char attrType, int attrLength /*, bool_t isUnique*/)
+int AM_CreateIndex(char *filename, int indexNo, char attrType, int attrLength /*, bool_t isUnique*/)
 {
 	int 	err;		/* returns the error*/
 	int 	AM_fd;			/* AM file descriptor*/	
 	int 	pagenum;		/* (root_block) page number of the root page (first page)*/
 	char 	*pagebuf;		/* (root_node)  buffer to hold a page*/
-	
+	/*int i;*/	
+	/*int filename_size;*/
+	/*FILE *fp;*/
 	/*int depth;*/
 	int 	records_in_node;	/*the number of records that are hold in the one page (node)  */
-	char 	*index_filename; /* to store the indexed files name with extensions*/
+	/*char 	*index_filename;*/ /* to store the indexed files name with extensions*/
+	/*char index_filename[strlen(filename)];*/
+	/*filename_size = strlen(filename)+13;*/
+	char index_filename[255+4];
+
+	/*index_filename = malloc (filename_size *sizeof(char));*/
+
+
+	/*(if(fp = open(index_filename, "testrel")))*/
 	
+
 /*--- Check Attributes-------------------------------------------------*/
 	/*  Check the parameters */
 	if (( attrType != 'c') && (attrType != 'i') && (attrType != 'f'))
@@ -677,32 +688,36 @@ int AM_CreateIndex(char* filename, int indexNo, char attrType, int attrLength /*
 			return(AME_INVALIDATTRLENGTH);
 		}*/
 
-	if( !(index_filename = filename_size(filename, indexNo)) )	return AMerrno;
+	/*if( !(index_filename = filename_size(filename, indexNo)) )	return AMerrno;*/
 		
 /*--------------------------------------------------------------------*/
 
 	/* Get the fileName and create a paged file by its name*/
 	sprintf(index_filename, "%s.%d", filename, indexNo);
 
+
+ 	AM_PrintError("OK");
 /*-----Create, Open, Allocate PF File------------------------------*/
-	if ( (err = PF_CreateFile(index_filename) ) < 0 )
+
+		/*	printf("%d", indexNo);*/
+AM_PrintError("Here is problem");
+err = PF_CreateFile(index_filename);
+	if ( (err ) != PFE_OK )/* problem starts here */
 	{
 		AMerrno = err;
 		return err;
-	}
-
+				}
 	/* Open the file from PF layer */
 	if ( ( AM_fd = err = PF_OpenFile(index_filename) ) < 0) 
 	{
 		AMerrno = err;
 		return err;
 	}
-
 	/*Allocate pages for the root*/
 	if( (err = PF_AllocPage(AM_fd, &pagenum, &pagebuf)) < 0)
 	{
 		/*PF_CloseFile(AM_fd);*/
-			AM_PrintError("Start checking attributes");
+			
 		AMerrno = err;
 		return err;
 	}
