@@ -99,6 +99,11 @@ void test_open_close_index()
     assert(AM_CloseIndex(i) == AME_OK);
     assert(AM_DestroyIndex("success", i) == AME_OK);
   }
+
+  assert(AM_CloseIndex(-1) == AME_FD);
+  assert(AM_CloseIndex(AM_ITAB_SIZE) == AME_FD);
+  /* Already closed */
+  assert(AM_CloseIndex(5) == AME_FD);
 }
 
 void test_operation()
@@ -199,14 +204,19 @@ void test_open_close_scan() {
   assert(AM_CloseIndex(0) == AME_SCANOPEN);
   assert(AM_CloseIndexScan(0) == AME_OK);
   assert(AM_CloseIndex(0) == AME_OK);
-  assert(AM_DestroyIndex("scan", 0));
+  assert(AM_DestroyIndex("scan", 0) == AME_OK);
 
   for (i = 1; i < MAXISCANS; ++i)
   {
     assert(AM_CloseIndexScan(i) == AME_OK);
     assert(AM_CloseIndex(i) == AME_OK);
-    assert(AM_DestroyIndex("scan", i));
+    assert(AM_DestroyIndex("scan", i) == AME_OK);
   }
+
+  assert(AM_CloseIndexScan(-1) == AME_INVALIDSCANDESC);
+  assert(AM_CloseIndexScan(MAXISCANS) == AME_INVALIDSCANDESC);
+  /* Already closed */
+  assert(AM_CloseIndexScan(5) == AME_INVALIDSCANDESC);
 }
 
 int main()
