@@ -149,6 +149,8 @@ int AM_OpenIndex(char *filename, int index_no)
     return AMerrno;
   }
 
+  index_table[am_fd].in_use = TRUE;
+  index_table[am_fd].fd = fd;
   return am_fd;
 }
 
