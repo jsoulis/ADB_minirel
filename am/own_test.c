@@ -189,7 +189,8 @@ void test_open_close_scan() {
   assert(AM_OpenIndexScan(i, -1, (char*)&key) == AME_INVALIDOP);
   assert(AM_OpenIndexScan(i, 7, (char*)&key) == AME_INVALIDOP);
 
-  assert(AM_OpenIndexScan(i, EQ_OP, (char*)&key) == i);
+  /* NULL pointer shouldn't care about the operation */
+  assert(AM_OpenIndexScan(i, 7, 0) == i);
 
   for (i = 1; i < MAXISCANS; ++i)
   {
@@ -219,6 +220,32 @@ void test_open_close_scan() {
   assert(AM_CloseIndexScan(5) == AME_INVALIDSCANDESC);
 }
 
+void test_insert_scan_simple() {
+  int am_fd = 0;
+  int scan_id = 0;
+  int key = 1;
+  RECID value, invalid_value, next_entry;
+  value.pagenum = 10, value.recnum = 11;
+  invalid_value.pagenum = -1, invalid_value.recnum = -1;
+
+  assert(AM_CreateIndex("insert", 0, 'i', 4, FALSE) == AME_OK);
+  assert(AM_OpenIndex("insert", 0) == am_fd);
+  assert(AM_InsertEntry(am_fd, (char *)&key, value) == AME_OK);
+
+  assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
+
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == value.pagenum &&
+         next_entry.recnum == value.recnum);
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == invalid_value.pagenum &&
+         next_entry.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+  assert(AM_CloseIndex(am_fd) == AME_OK);
+  assert(AM_DestroyIndex("insert", 0) == AME_OK);
+}
+
 int main()
 {
   test_filename_size();
@@ -232,6 +259,7 @@ int main()
   test_create_destroy_index();
   test_open_close_index();
   test_open_close_scan();
+  test_insert_scan_simple();
 
   printf("Passed all tests\n");
   return 0;

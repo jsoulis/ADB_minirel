@@ -243,7 +243,8 @@ int AM_OpenIndexScan(int am_fd, int operation, char *key)
     return AMerrno;
   }
 
-  if (!(operation == EQ_OP || operation == LT_OP || operation == GT_OP || operation == LE_OP || operation == GE_OP || operation == NE_OP))
+  /* If the key is null, allow any operation */
+  if (key != 0 && !(operation == EQ_OP || operation == LT_OP || operation == GT_OP || operation == LE_OP || operation == GE_OP || operation == NE_OP))
   {
     AMerrno = AME_INVALIDOP;
 
@@ -307,3 +308,16 @@ Leaf with duplicate keys are trying to split
  * Always keep duplicate values on the same leaf
    Move whichever side of the dups. that have fewer elements
 */
+
+int AM_InsertEntry(int am_fd, char *key, RECID value) {
+  (void)am_fd;
+  (void)key;
+  (void)value;
+  return 0;
+}
+
+RECID AM_FindNextEntry(int scan_id) {
+  RECID value;
+  (void) scan_id;
+  return value;
+}
