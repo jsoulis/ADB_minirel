@@ -673,20 +673,20 @@ int AM_CreateIndex(char *filename, int indexNo, char attrType, int attrLength /*
 			return(AME_INVALIDATTRLENGTH);
 		}
 
-	/*if (attrLength != 4 && ( attrType =='i' || attrType == 'f'))*/ /* 4 for 'i' or 'f' */
-	/*{
+	if (attrLength != 4 && ( attrType =='i' || attrType == 'f')) /* 4 for 'i' or 'f' */
+	{
 		
 		AMerrno = AME_INVALIDATTRLENGTH;	
-		return AMerrno;*/  /* Segmentation fault, core dumped*/
+		return AMerrno;
 		
-	/*}
-	else*/			
-		/*if( attrType ==  'c' && ((attrLength < 1) ||( attrLength > 255)))*/	/* 1-255 for 'c' 	*/			
-		/*{ 
+	}
+	else			
+		if( attrType ==  'c' && ((attrLength < 1) ||( attrLength > 255)))	/* 1-255 for 'c' 	*/			
+		{ 
 				
 			AMerrno = AME_INVALIDATTRLENGTH; 
 			return(AME_INVALIDATTRLENGTH);
-		}*/
+		}
 
 	/*if( !(index_filename = filename_size(filename, indexNo)) )	return AMerrno;*/
 		
