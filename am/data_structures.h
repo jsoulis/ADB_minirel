@@ -4,6 +4,8 @@
 #include "stdint.h"
 #include "minirel.h"
 
+typedef enum { INTERNAL, LEAF } node_type;
+
 typedef struct
 {
   char *key;
@@ -12,6 +14,7 @@ typedef struct
 
 typedef struct
 {
+  node_type type;
   int valid_entries;
   char key_type;
   /* Maximum size is 255 */
@@ -27,6 +30,7 @@ typedef struct
 
 typedef struct
 {
+  node_type type;
   int valid_entries;
   char key_type;
   /* Maximum size is 255 */

@@ -26,8 +26,13 @@ int AM_CreateIndex(char *filename, int index_no, char attr_type, int attr_length
   int fd, pagenum;
   char *filename_with_index;
 
-  if (!(attr_type == 'c' || attr_type == 'i' || attr_type == 'f') || (attr_length < 1 || attr_length > 255)) {
+  if (!(attr_type == 'c' || attr_type == 'i' || attr_type == 'f')) {
     AMerrno = AME_INVALIDATTRTYPE;
+    return AMerrno;
+  }
+
+  if (attr_length < 1 || attr_length > 255) {
+    AMerrno = AME_INVALIDATTRLENGTH;
     return AMerrno;
   }
 
@@ -163,3 +168,16 @@ int AM_CloseIndex(int am_fd) {
   entry.in_use = FALSE;
   return AME_OK;
 }
+
+/*
+Find the correct index with binary search
+Possible cases.
+Either simple case where we can just insert without trouble
+Push up and split
+Split recursively
+Leaf with duplicate keys are trying to split
+ * Duplicate keys are already a key in parent => 
+          push lower / higher depending on new key
+ * Always keep duplicate values on the same leaf
+   Move whichever side of the dups. that have fewer elements
+*/
