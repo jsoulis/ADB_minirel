@@ -48,10 +48,76 @@ int max_node_count(uint8_t key_length) {
   return node_count;
 }
 
-/*
-int binary_search(const char *key, uint8_t key_length, uint8_t ptr_length, const char *pairs, int key_count) {
-  int middle_index;
+bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, int operation, uint8_t key_type)
+{
+  int a_i, b_i;
+  float a_f, b_f;
+  
+  int memcmp_code;
+  switch (key_type)
+  {
+  case 'i':
+    a_i = *(int *)a;
+    b_i = *(int *)b;
+    switch (operation)
+    {
+    case EQ_OP:
+      return a_i == b_i;
+    case LT_OP:
+      return a_i < b_i;
+    case GT_OP:
+      return a_i > b_i;
+    case LE_OP:
+      return a_i <= b_i;
+    case GE_OP:
+      return a_i >= b_i;
+    case NE_OP:
+      return a_i != b_i;
+    }
+    break;
+  case 'f':
+    a_f = *(float*) a;
+    b_f = *(float*) b; 
+    switch( operation) {
+    case EQ_OP:
+      return a_f == b_f;
+    case LT_OP:
+      return a_f < b_f;
+    case GT_OP:
+      return a_f > b_f;
+    case LE_OP:
+      return a_f <= b_f;
+    case GE_OP:
+      return a_f >= b_f;
+    case NE_OP:
+      return a_f != b_f;
+    }
+    break;
+  case 'c':
+    memcmp_code = memcmp(a, b, key_length);
+    switch( operation) {
+    case EQ_OP:
+      return memcmp_code == 0;
+    case LT_OP:
+      return memcmp_code < 0;
+    case GT_OP:
+      return memcmp_code > 0;
+    case LE_OP:
+      return memcmp_code == 0 || memcmp_code < 0;
+    case GE_OP:
+      return memcmp_code == 0 || memcmp_code > 0;
+    case NE_OP:
+      return memcmp_code != 0;
+    }
+  }
 
-  middle_index = key_length + key_count / 2;
+  return FALSE;
+}
+
+
+/*
+int find_ptr_index(const char *key, uint8_t key_length, uint8_t ptr_length, const char *pairs, int key_count)
+{
+  return 0;
 }
 */
