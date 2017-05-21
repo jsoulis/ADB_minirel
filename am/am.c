@@ -236,7 +236,7 @@ int AM_OpenIndexScan(int am_fd, int operation, char *key)
   int i;
   int scan_id = -1;
 
-  if (am_fd < 0 || am_fd > AM_ITAB_SIZE || !index_table[am_fd].in_use)
+  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE || !index_table[am_fd].in_use)
   {
     AMerrno = AME_FD;
 
@@ -271,14 +271,28 @@ int AM_OpenIndexScan(int am_fd, int operation, char *key)
   entry->operation = operation;
   entry->key = key;
   entry->index_in_node = 0;
+  entry->node = 0;
 
   return scan_id;
 }
 
-int AM_CloseIndexScan(int am_fd)
+int AM_CloseIndexScan(int scan_id)
 {
-  (void)am_fd;
-  return 0;
+  scan_table_entry *entry;
+  if (scan_id < 0 || scan_id >= MAXISCANS || !scan_table[scan_id].in_use) {
+    AMerrno = AME_INVALIDSCANDESC;
+    return AMerrno;
+  }
+
+  entry = &scan_table[scan_id];
+  entry->in_use = FALSE;
+  entry->am_fd = -1;
+  entry->operation = -1;
+  entry->key = 0;
+  entry->index_in_node = 0;
+  entry->node = 0;
+
+  return AME_OK;
 }
 
 /*
