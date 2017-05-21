@@ -3,6 +3,7 @@
 #include "stdio.h"
 #include "utils.h"
 #include "unistd.h"
+#include "stdlib.h"
 #include "am.h"
 
 int AMerrno;
@@ -47,23 +48,25 @@ void test_max_node_count()
 
 void test_create_destroy_index()
 {
-  unlink("success1.1"); unlink("success1.5"); unlink("success2.987");
-
+  unlink("success1.1");
+  unlink("success1.5");
+  unlink("success2.987");
   assert(AM_CreateIndex("fail1", 1, 'a', 1, FALSE) == AME_INVALIDATTRTYPE);
   assert(AM_CreateIndex("fail2", 1, 'c', 256, FALSE) == AME_INVALIDATTRLENGTH);
   assert(AM_CreateIndex("success1", 1, 'c', 1, FALSE) == AME_OK);
   assert(AM_CreateIndex("success1", 5, 'c', 1, FALSE) == AME_OK);
   assert(AM_CreateIndex("success2", 987, 'c', 4, FALSE) == AME_OK);
 
-  assert(AM_DestroyIndex("success1", 1) == AME_OK); 
-  assert(AM_DestroyIndex("success1", 5) == AME_OK); 
+  assert(AM_DestroyIndex("success1", 1) == AME_OK);
+  assert(AM_DestroyIndex("success1", 5) == AME_OK);
   assert(AM_DestroyIndex("success2", 987) == AME_OK);
 
   assert(AM_DestroyIndex("wut", 1) == AME_PF);
   assert(AM_DestroyIndex("success1", 2) == AME_PF);
 }
 
-void test_open_close_index() {
+void test_open_close_index()
+{
   int i;
   /* No such file */
   assert(AM_OpenIndex("fail", 1) == AME_PF);
@@ -74,7 +77,8 @@ void test_open_close_index() {
   assert(AM_OpenIndex("success", 1) == AME_PF);
 
   /* Fill the table */
-  for (i = 1; i < AM_ITAB_SIZE; ++i) {
+  for (i = 1; i < AM_ITAB_SIZE; ++i)
+  {
     assert(AM_CreateIndex("success", i, 'c', 1, FALSE) == AME_OK);
     /* Equals i because we're opening in order */
     assert(AM_OpenIndex("success", i) == i);
@@ -96,6 +100,76 @@ void test_open_close_index() {
   }
 }
 
+void test_operation() {
+  int i1 = 3;
+  int i2 = 7;
+
+  float f1 = 1.3;
+  float f2 = 10.3;
+
+  char *c1 = "cool";
+  char *c2 = "dada";
+
+  assert(is_operation_true((char*)&i1, (char*)&i1, sizeof(int), EQ_OP, 'i') == TRUE);
+  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), EQ_OP, 'i') == FALSE);
+  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), LT_OP, 'i') == TRUE);
+  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), GT_OP, 'i') == FALSE);
+  assert(is_operation_true((char*)&i1, (char*)&i1, sizeof(int), LE_OP, 'i') == TRUE);
+  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), LE_OP, 'i') == TRUE);
+  assert(is_operation_true((char*)&i2, (char*)&i2, sizeof(int), GE_OP, 'i') == TRUE);
+  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), GE_OP, 'i') == FALSE);
+  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), NE_OP, 'i') == TRUE);
+  assert(is_operation_true((char*)&i1, (char*)&i1, sizeof(int), NE_OP, 'i') == FALSE);
+
+  assert(is_operation_true((char*)&f1, (char*)&f1, sizeof(float), EQ_OP, 'f') == TRUE);
+  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), EQ_OP, 'f') == FALSE);
+  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), LT_OP, 'f') == TRUE);
+  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), GT_OP, 'f') == FALSE);
+  assert(is_operation_true((char*)&f1, (char*)&f1, sizeof(float), LE_OP, 'f') == TRUE);
+  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), LE_OP, 'f') == TRUE);
+  assert(is_operation_true((char*)&f2, (char*)&f2, sizeof(float), GE_OP, 'f') == TRUE);
+  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), GE_OP, 'f') == FALSE);
+  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), NE_OP, 'f') == TRUE);
+  assert(is_operation_true((char*)&f1, (char*)&f1, sizeof(float), NE_OP, 'f') == FALSE);
+
+  assert(is_operation_true(c1, c1, strlen(c1), EQ_OP, 'c') == TRUE);
+  assert(is_operation_true(c1, c2, strlen(c1), EQ_OP, 'c') == FALSE);
+  assert(is_operation_true(c1, c2, strlen(c1), LT_OP, 'c') == TRUE);
+  assert(is_operation_true(c1, c2, strlen(c1), GT_OP, 'c') == FALSE);
+  assert(is_operation_true(c1, c1, strlen(c1), LE_OP, 'c') == TRUE);
+  assert(is_operation_true(c1, c2, strlen(c1), LE_OP, 'c') == TRUE);
+  assert(is_operation_true(c2, c2, strlen(c1), GE_OP, 'c') == TRUE);
+  assert(is_operation_true(c1, c2, strlen(c1), GE_OP, 'c') == FALSE);
+  assert(is_operation_true(c1, c2, strlen(c1), NE_OP, 'c') == TRUE);
+  assert(is_operation_true(c1, c1, strlen(c1), NE_OP, 'c') == FALSE);
+}
+/*
+void test_find_ptr_index()
+{
+  char keys[] = {(char)1, (char)0, (char)3, (char)11};
+  uint8_t key_length = sizeof(char);
+  uint8_t ptr_length = sizeof(char);
+  int key_count = 3;
+  char pairs[] = {0x5, 0x1, 0x6, 0x3, 0x7, 0xA, 0x8};
+
+  int index = find_ptr_index(&keys[0], key_length, ptr_length, pairs, key_count);
+  assert(index == 1);
+  assert(*(pairs + index) == 6);
+
+  index = find_ptr_index(&keys[1], key_length, ptr_length, pairs, key_count);
+  assert(index == 0);
+  assert(*(pairs + index) == 5);
+
+  index = find_ptr_index(&keys[2], key_length, ptr_length, pairs, key_count);
+  assert(index == 1);
+  assert(*(pairs + index) == 6);
+
+  index = find_ptr_index(&keys[3], key_length, ptr_length, pairs, key_count);
+  assert(index == 3);
+  assert(*(pairs + index) == 8);
+}
+*/
+
 int main()
 {
   test_filename_size();
@@ -106,6 +180,9 @@ int main()
   AM_Init();
   test_create_destroy_index();
   test_open_close_index();
+
+  test_operation();
+  /* test_find_ptr_index(); */
 
   printf("Passed all tests\n");
   return 0;
