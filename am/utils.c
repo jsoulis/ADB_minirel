@@ -48,7 +48,7 @@ int max_node_count(uint8_t key_length) {
   return node_count;
 }
 
-bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, int operation, uint8_t key_type)
+bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, uint8_t key_type, int operation)
 {
   int a_i, b_i;
   float a_f, b_f;
@@ -115,9 +115,22 @@ bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, int o
 }
 
 
-/*
-int find_ptr_index(const char *key, uint8_t key_length, uint8_t ptr_length, const char *pairs, int key_count)
+int find_ptr_index(const char *key, uint8_t key_length, uint8_t key_type, uint8_t ptr_length, char *pairs, int key_count)
 {
-  return 0;
+  int i;
+
+  for (i = 0; i <= key_count; ++i) {
+    if (is_operation_true(key, get_key_address(pairs, key_length, ptr_length, i), key_length, key_type, LT_OP)) {
+      break;
+    }
+  }
+  /* If it's never less than, the last spot is the index we want to insert into */
+  return i;
 }
-*/
+
+char* get_key_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int index) {
+  return (pairs + ptr_length) + (key_length + ptr_length) * index;
+}
+char* get_ptr_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int index) {
+  return pairs + (key_length + ptr_length) * index;
+}
