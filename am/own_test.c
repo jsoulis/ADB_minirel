@@ -100,7 +100,8 @@ void test_open_close_index()
   }
 }
 
-void test_operation() {
+void test_operation()
+{
   int i1 = 3;
   int i2 = 7;
 
@@ -110,40 +111,39 @@ void test_operation() {
   char *c1 = "cool";
   char *c2 = "dada";
 
-  assert(is_operation_true((char*)&i1, (char*)&i1, sizeof(int), EQ_OP, 'i') == TRUE);
-  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), EQ_OP, 'i') == FALSE);
-  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), LT_OP, 'i') == TRUE);
-  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), GT_OP, 'i') == FALSE);
-  assert(is_operation_true((char*)&i1, (char*)&i1, sizeof(int), LE_OP, 'i') == TRUE);
-  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), LE_OP, 'i') == TRUE);
-  assert(is_operation_true((char*)&i2, (char*)&i2, sizeof(int), GE_OP, 'i') == TRUE);
-  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), GE_OP, 'i') == FALSE);
-  assert(is_operation_true((char*)&i1, (char*)&i2, sizeof(int), NE_OP, 'i') == TRUE);
-  assert(is_operation_true((char*)&i1, (char*)&i1, sizeof(int), NE_OP, 'i') == FALSE);
+  assert(is_operation_true((char *)&i1, (char *)&i1, sizeof(int), 'i', EQ_OP) == TRUE);
+  assert(is_operation_true((char *)&i1, (char *)&i2, sizeof(int), 'i', EQ_OP) == FALSE);
+  assert(is_operation_true((char *)&i1, (char *)&i2, sizeof(int), 'i', LT_OP) == TRUE);
+  assert(is_operation_true((char *)&i1, (char *)&i2, sizeof(int), 'i', GT_OP) == FALSE);
+  assert(is_operation_true((char *)&i1, (char *)&i1, sizeof(int), 'i', LE_OP) == TRUE);
+  assert(is_operation_true((char *)&i1, (char *)&i2, sizeof(int), 'i', LE_OP) == TRUE);
+  assert(is_operation_true((char *)&i2, (char *)&i2, sizeof(int), 'i', GE_OP) == TRUE);
+  assert(is_operation_true((char *)&i1, (char *)&i2, sizeof(int), 'i', GE_OP) == FALSE);
+  assert(is_operation_true((char *)&i1, (char *)&i2, sizeof(int), 'i', NE_OP) == TRUE);
+  assert(is_operation_true((char *)&i1, (char *)&i1, sizeof(int), 'i', NE_OP) == FALSE);
 
-  assert(is_operation_true((char*)&f1, (char*)&f1, sizeof(float), EQ_OP, 'f') == TRUE);
-  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), EQ_OP, 'f') == FALSE);
-  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), LT_OP, 'f') == TRUE);
-  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), GT_OP, 'f') == FALSE);
-  assert(is_operation_true((char*)&f1, (char*)&f1, sizeof(float), LE_OP, 'f') == TRUE);
-  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), LE_OP, 'f') == TRUE);
-  assert(is_operation_true((char*)&f2, (char*)&f2, sizeof(float), GE_OP, 'f') == TRUE);
-  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), GE_OP, 'f') == FALSE);
-  assert(is_operation_true((char*)&f1, (char*)&f2, sizeof(float), NE_OP, 'f') == TRUE);
-  assert(is_operation_true((char*)&f1, (char*)&f1, sizeof(float), NE_OP, 'f') == FALSE);
+  assert(is_operation_true((char *)&f1, (char *)&f1, sizeof(float), 'f', EQ_OP) == TRUE);
+  assert(is_operation_true((char *)&f1, (char *)&f2, sizeof(float), 'f', EQ_OP) == FALSE);
+  assert(is_operation_true((char *)&f1, (char *)&f2, sizeof(float), 'f', LT_OP) == TRUE);
+  assert(is_operation_true((char *)&f1, (char *)&f2, sizeof(float), 'f', GT_OP) == FALSE);
+  assert(is_operation_true((char *)&f1, (char *)&f1, sizeof(float), 'f', LE_OP) == TRUE);
+  assert(is_operation_true((char *)&f1, (char *)&f2, sizeof(float), 'f', LE_OP) == TRUE);
+  assert(is_operation_true((char *)&f2, (char *)&f2, sizeof(float), 'f', GE_OP) == TRUE);
+  assert(is_operation_true((char *)&f1, (char *)&f2, sizeof(float), 'f', GE_OP) == FALSE);
+  assert(is_operation_true((char *)&f1, (char *)&f2, sizeof(float), 'f', NE_OP) == TRUE);
+  assert(is_operation_true((char *)&f1, (char *)&f1, sizeof(float), 'f', NE_OP) == FALSE);
 
-  assert(is_operation_true(c1, c1, strlen(c1), EQ_OP, 'c') == TRUE);
-  assert(is_operation_true(c1, c2, strlen(c1), EQ_OP, 'c') == FALSE);
-  assert(is_operation_true(c1, c2, strlen(c1), LT_OP, 'c') == TRUE);
-  assert(is_operation_true(c1, c2, strlen(c1), GT_OP, 'c') == FALSE);
-  assert(is_operation_true(c1, c1, strlen(c1), LE_OP, 'c') == TRUE);
-  assert(is_operation_true(c1, c2, strlen(c1), LE_OP, 'c') == TRUE);
-  assert(is_operation_true(c2, c2, strlen(c1), GE_OP, 'c') == TRUE);
-  assert(is_operation_true(c1, c2, strlen(c1), GE_OP, 'c') == FALSE);
-  assert(is_operation_true(c1, c2, strlen(c1), NE_OP, 'c') == TRUE);
-  assert(is_operation_true(c1, c1, strlen(c1), NE_OP, 'c') == FALSE);
+  assert(is_operation_true(c1, c1, strlen(c1), 'c', EQ_OP) == TRUE);
+  assert(is_operation_true(c1, c2, strlen(c1), 'c', EQ_OP) == FALSE);
+  assert(is_operation_true(c1, c2, strlen(c1), 'c', LT_OP) == TRUE);
+  assert(is_operation_true(c1, c2, strlen(c1), 'c', GT_OP) == FALSE);
+  assert(is_operation_true(c1, c1, strlen(c1), 'c', LE_OP) == TRUE);
+  assert(is_operation_true(c1, c2, strlen(c1), 'c', LE_OP) == TRUE);
+  assert(is_operation_true(c2, c2, strlen(c1), 'c', GE_OP) == TRUE);
+  assert(is_operation_true(c1, c2, strlen(c1), 'c', GE_OP) == FALSE);
+  assert(is_operation_true(c1, c2, strlen(c1), 'c', NE_OP) == TRUE);
+  assert(is_operation_true(c1, c1, strlen(c1), 'c', NE_OP) == FALSE);
 }
-/*
 void test_find_ptr_index()
 {
   char keys[] = {(char)1, (char)0, (char)3, (char)11};
@@ -152,23 +152,22 @@ void test_find_ptr_index()
   int key_count = 3;
   char pairs[] = {0x5, 0x1, 0x6, 0x3, 0x7, 0xA, 0x8};
 
-  int index = find_ptr_index(&keys[0], key_length, ptr_length, pairs, key_count);
+  int index = find_ptr_index(&keys[0], key_length, 'c', ptr_length, pairs, key_count);
   assert(index == 1);
-  assert(*(pairs + index) == 6);
+  assert(*get_ptr_address(pairs, key_length, ptr_length, index) == 6);
 
-  index = find_ptr_index(&keys[1], key_length, ptr_length, pairs, key_count);
+  index = find_ptr_index(&keys[1], key_length, 'c', ptr_length, pairs, key_count);
   assert(index == 0);
-  assert(*(pairs + index) == 5);
+  assert(*get_ptr_address(pairs, key_length, ptr_length, index) == 5);
 
-  index = find_ptr_index(&keys[2], key_length, ptr_length, pairs, key_count);
-  assert(index == 1);
-  assert(*(pairs + index) == 6);
+  index = find_ptr_index(&keys[2], key_length, 'c', ptr_length, pairs, key_count);
+  assert(index == 2);
+  assert(*get_ptr_address(pairs, key_length, ptr_length, index) == 7);
 
-  index = find_ptr_index(&keys[3], key_length, ptr_length, pairs, key_count);
+  index = find_ptr_index(&keys[3], key_length, 'c', ptr_length, pairs, key_count);
   assert(index == 3);
-  assert(*(pairs + index) == 8);
+  assert(*get_ptr_address(pairs, key_length, ptr_length, index) == 8);
 }
-*/
 
 int main()
 {
@@ -182,7 +181,7 @@ int main()
   test_open_close_index();
 
   test_operation();
-  /* test_find_ptr_index(); */
+  test_find_ptr_index();
 
   printf("Passed all tests\n");
   return 0;
