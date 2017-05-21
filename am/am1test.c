@@ -52,7 +52,7 @@ void amtest1()
 
    printf("***** start amtest1 *****\n");
    /* making sure FILE1 index is not present */
-   sprintf(files_to_delete, "rm -f %s*", FILE1);
+  sprintf(files_to_delete, "rm -f %s*", FILE1);
    system(files_to_delete);
 
    /* Creating HF file to insert records */
@@ -67,7 +67,7 @@ void amtest1()
       exit(1);
    }*/
 
-   if (AM_CreateIndex(FILE1, 1, STRING_TYPE, STRSIZE/*, FALSE*/) != AME_OK) {
+   if (AM_CreateIndex( FILE1, 1, STRING_TYPE, STRSIZE/*, FALSE*/) != AME_OK) {
       AM_PrintError("Problem creating ");
       exit(1);
    }
@@ -77,8 +77,8 @@ void amtest1()
    }*/
 
    /* Inserting value in the HF file and the B+ Tree */
-      value = 10;
-      while (value < 100)
+     /* value = 10;
+      while (value < 100)*/
 
          /* Notice the recid value being inserted is trash.    */
          /* The (char *)& is unnecessary in AM_InsertEntry     */
