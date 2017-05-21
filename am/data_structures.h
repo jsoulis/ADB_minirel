@@ -47,4 +47,14 @@ typedef struct
   internal_node *root;
 } index_table_entry;
 
+typedef struct
+{
+  bool_t in_use;
+  int am_fd;
+  int operation;
+  char *key;
+  int index_in_node;
+  leaf_node *node;
+} scan_table_entry;
+
 #endif
