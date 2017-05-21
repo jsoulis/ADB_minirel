@@ -309,6 +309,7 @@ int main(int argc, char *argv[])
   /*****************************************/
   /*  IMPORTANT INITIALIZATION             */
   /*****************************************/
+  PF_Init();
   AM_Init(); /* Initializes also the HF_Init */
   
   /* if no arguments given, do all tests */
