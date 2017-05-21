@@ -79,19 +79,28 @@ int AM_CreateIndex(char *filename, int index_no, char attr_type, int attr_length
     return AMerrno;
   }
 
+  if (PF_CloseFile(fd) != PFE_OK) {
+    free(filename_with_index);
+
+    AMerrno = AME_PF;
+    return AMerrno;
+  }
+
   free(filename_with_index);
   /* stop complaining about unused variable */
   (void)is_unique;
   return AME_OK;
 }
 
-int AM_DestroyIndex(char *filename, int index_no) {
+int AM_DestroyIndex(char *filename, int index_no)
+{
   int return_code = AME_OK;
   char *filename_with_index = malloc(sizeof_filename_with_index(filename, index_no));
   set_filename_with_index(filename, index_no, filename_with_index);
   /* PF won't destroy a pinned file. So if we have the root pinned we can just
    * check like this */
-  if (PF_DestroyFile(filename_with_index) != PFE_OK) {
+  if (PF_DestroyFile(filename_with_index) != PFE_OK)
+  {
     AMerrno = AME_PF;
     return_code = AMerrno;
   }
@@ -100,35 +109,40 @@ int AM_DestroyIndex(char *filename, int index_no) {
   return return_code;
 }
 
-int AM_OpenIndex(char *filename, int index_no) {
+int AM_OpenIndex(char *filename, int index_no)
+{
   char *filename_with_index;
   int i, fd, pagenum, am_fd = -1;
 
   /* Check if there is space in table */
-  for (i = 0; i < AM_ITAB_SIZE; ++i) {
-    if (!index_table[i].in_use) {
+  for (i = 0; i < AM_ITAB_SIZE; ++i)
+  {
+    if (!index_table[i].in_use)
+    {
       am_fd = i;
       break;
     }
-  } 
-  if (am_fd == -1) {
+  }
+  if (am_fd == -1)
+  {
     AMerrno = AME_FULLTABLE;
     return AMerrno;
   }
-
 
   filename_with_index = malloc(sizeof_filename_with_index(filename, index_no));
   set_filename_with_index(filename, index_no, filename_with_index);
 
   fd = PF_OpenFile(filename_with_index);
-  if (fd < 0) {
+  if (fd < 0)
+  {
     free(filename_with_index);
 
     AMerrno = AME_PF;
     return AMerrno;
   }
 
-  if (PF_GetFirstPage(fd, &pagenum, (char**)&index_table[am_fd].root) != PFE_OK) {
+  if (PF_GetFirstPage(fd, &pagenum, (char **)&index_table[am_fd].root) != PFE_OK)
+  {
     free(filename_with_index);
 
     AMerrno = AME_PF;
@@ -138,28 +152,32 @@ int AM_OpenIndex(char *filename, int index_no) {
   return am_fd;
 }
 
-int AM_CloseIndex(int am_fd) {
+int AM_CloseIndex(int am_fd)
+{
   index_table_entry entry;
 
-  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE) {
+  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE)
+  {
     AMerrno = AME_FD;
     return AMerrno;
   }
-
 
   entry = index_table[am_fd];
-  if (!entry.in_use) {
+  if (!entry.in_use)
+  {
     AMerrno = AME_FD;
     return AMerrno;
   }
 
-  /* pagenum 0 should always be the root */ 
-  if (PF_UnpinPage(entry.fd, 0, FALSE) != PFE_OK) {
+  /* pagenum 0 should always be the root */
+  if (PF_UnpinPage(entry.fd, 0, FALSE) != PFE_OK)
+  {
     AMerrno = AME_FD;
     return AMerrno;
   }
 
-  if (PF_CloseFile(entry.fd) != PFE_OK) {
+  if (PF_CloseFile(entry.fd) != PFE_OK)
+  {
     AMerrno = AME_FD;
 
     return AMerrno;
