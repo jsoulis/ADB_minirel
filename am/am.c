@@ -23,7 +23,7 @@ void AM_Init() {
 
   for (i = 0; i < MAXISCANS; ++i) {
     scan_table[i].in_use = FALSE;
-    scan_table[i].index_in_node = 0;
+    scan_table[i].key_index = 0;
   }
 }
 
@@ -243,26 +243,36 @@ int AM_OpenIndexScan(int am_fd, int operation, char *key) {
   entry->am_fd = am_fd;
   entry->operation = operation;
   entry->key = key;
-  entry->index_in_node = 0;
-  entry->node = 0;
+  entry->key_index = 0;
+  entry->leaf = 0;
 
   return scan_id;
 }
 
 int AM_CloseIndexScan(int scan_id) {
-  scan_table_entry *entry;
+  scan_table_entry *scan_entry;
+  index_table_entry *index_entry;
   if (scan_id < 0 || scan_id >= MAXISCANS || !scan_table[scan_id].in_use) {
     AMerrno = AME_INVALIDSCANDESC;
     return AMerrno;
   }
 
-  entry = &scan_table[scan_id];
-  entry->in_use = FALSE;
-  entry->am_fd = -1;
-  entry->operation = -1;
-  entry->key = 0;
-  entry->index_in_node = 0;
-  entry->node = 0;
+  scan_entry = &scan_table[scan_id];
+  index_entry = &index_table[scan_entry->am_fd];
+
+  if (scan_entry->leaf != NULL &&
+      PF_UnpinPage(index_entry->fd, scan_entry->leaf_pagenum, FALSE) !=
+          PFE_OK) {
+    AMerrno = AME_PF;
+    return AMerrno;
+  }
+
+  scan_entry->in_use = FALSE;
+  scan_entry->am_fd = -1;
+  scan_entry->operation = -1;
+  scan_entry->key = 0;
+  scan_entry->key_index = 0;
+  scan_entry->leaf = 0;
 
   return AME_OK;
 }
@@ -283,9 +293,8 @@ Leaf with duplicate keys are trying to split
 int AM_InsertEntry(int am_fd, char *key, RECID value) 
 {
   index_table_entry *entry;
-  internal_node *in_node;
   leaf_node *le_node;
-  int ptr_index, pagenum, prev_pagenum;
+  int ptr_index, pagenum;
   int err;
 
   if (am_fd < 0 || am_fd >= AM_ITAB_SIZE || !index_table[am_fd].in_use) {
@@ -294,38 +303,15 @@ int AM_InsertEntry(int am_fd, char *key, RECID value)
   }
 
   entry = &index_table[am_fd];
-  in_node = entry->root;
 
-  if (in_node->valid_entries == 0) {
+  if (entry->root->valid_entries == 0) {
     if ((err = initialize_root_node(entry, key)) != AME_OK) {
       AMerrno = err;
       return AMerrno;
     }
   }
 
-  do {
-    in_node->pairs = (char *)&in_node->pairs + sizeof(char*);
-
-    ptr_index =
-        find_ptr_index(key, in_node->key_length, in_node->key_type,
-                       INTERNAL_NODE_PTR_SIZE, in_node->pairs,
-                       in_node->valid_entries);
-    pagenum = *get_ptr_address(in_node->pairs, in_node->key_length,
-                              INTERNAL_NODE_PTR_SIZE, ptr_index);
-
-    PF_GetThisPage(entry->fd, pagenum, (char **)&in_node);
-
-    /* Don't unpin root */
-    if (prev_pagenum != 0) {
-      PF_UnpinPage(entry->fd, prev_pagenum, FALSE);
-    }
-
-    prev_pagenum = pagenum;
-  } while (in_node->type == INTERNAL);
-
-  le_node = (leaf_node*)in_node;
-  le_node->pairs = (char*)&le_node->pairs + sizeof(char*);
-
+  le_node = find_leaf(entry->fd, entry->root, key, &pagenum);
   ptr_index = find_ptr_index(key, le_node->key_length, le_node->key_type,
                              LEAF_NODE_PTR_SIZE, le_node->pairs,
                              le_node->valid_entries);
@@ -333,7 +319,7 @@ int AM_InsertEntry(int am_fd, char *key, RECID value)
   memcpy(get_key_address(le_node->pairs, le_node->key_length,
                          LEAF_NODE_PTR_SIZE, ptr_index),
          key, le_node->key_length);
-  
+  ++le_node->valid_entries;
   if (PF_UnpinPage(entry->fd, pagenum, TRUE) != PFE_OK) {
     AMerrno = AME_PF;
     return AMerrno;
@@ -343,11 +329,92 @@ int AM_InsertEntry(int am_fd, char *key, RECID value)
 
 RECID AM_FindNextEntry(int scan_id) {
   RECID invalid_rec;
+  int err;
+  scan_table_entry *scan_entry;
+  index_table_entry *index_entry;
+  char *key_address;
+  RECID *ptr_address;
+
   invalid_rec.recnum = -1, invalid_rec.pagenum = -1;
+
   if (scan_id < 0 || scan_id >= MAXISCANS || !scan_table[scan_id].in_use) {
     AMerrno = AME_INVALIDSCANDESC;
     return invalid_rec;
   }
 
-  return invalid_rec;
+  scan_entry = &scan_table[scan_id];
+  index_entry = &index_table[scan_entry->am_fd];
+
+  if (!scan_entry->leaf) {
+    scan_entry->leaf = find_leaf(index_entry->fd, index_entry->root,
+                            scan_entry->key, &scan_entry->leaf_pagenum);
+    /* If it's a NE operation, just go from the start and skip the NE elements
+     */
+    if (scan_entry->key && scan_entry->operation != NE_OP) {
+      /* ptr index = key index and it's now GE to to key */
+      scan_entry->key_index = find_ptr_index(
+          scan_entry->key, scan_entry->leaf->key_length, scan_entry->leaf->key_type,
+          LEAF_NODE_PTR_SIZE, scan_entry->leaf->pairs, scan_entry->leaf->valid_entries);
+      /* We want to point to the index before */
+      switch (scan_entry->operation) {
+      case GE_OP:
+      case LE_OP:
+      case EQ_OP:
+        --scan_entry->key_index;
+        break;
+      }
+    } else {
+      scan_entry->key_index = -1;
+    }
+  }
+
+  if ((err = update_scan_entry_key_index(scan_entry, index_entry)) != AME_OK) {
+    AMerrno = err;
+    return invalid_rec;
+  }
+
+  /* Just scan through */
+  if (!scan_entry->key) {
+    ptr_address = (RECID *)get_ptr_address(scan_entry->leaf->pairs,
+                                    scan_entry->leaf->key_length,
+                                    LEAF_NODE_PTR_SIZE, scan_entry->key_index);
+  } else {
+    key_address =
+        get_key_address(scan_entry->leaf->pairs, scan_entry->leaf->key_length,
+                        LEAF_NODE_PTR_SIZE, scan_entry->key_index);
+    switch (scan_entry->operation) {
+    case EQ_OP:
+    case LT_OP:
+    case GT_OP:
+    case LE_OP:
+    case GE_OP:
+      if (is_operation_true(scan_entry->key, key_address, scan_entry->leaf->key_length,
+                            scan_entry->leaf->key_type,
+                            scan_entry->operation)) {
+        ptr_address = (RECID *)get_ptr_address(
+            scan_entry->leaf->pairs, scan_entry->leaf->key_length,
+            LEAF_NODE_PTR_SIZE, scan_entry->key_index);
+      } else {
+        AMerrno = AME_EOF;
+        ptr_address = &invalid_rec;
+      }
+      break;
+    case NE_OP:
+      if (is_operation_true(scan_entry->key, key_address, scan_entry->leaf->key_length,
+                            scan_entry->leaf->key_type,
+                            scan_entry->operation)) {
+        /* if NE we want to skip, update index */
+        if ((err = update_scan_entry_key_index(scan_entry, index_entry)) !=
+            AME_OK) {
+          AMerrno = err;
+          ptr_address = &invalid_rec;
+        } else {
+          ptr_address = (RECID *)get_ptr_address(
+              scan_entry->leaf->pairs, scan_entry->leaf->key_length,
+              LEAF_NODE_PTR_SIZE, scan_entry->key_index);
+        }
+      }
+    }
+  }
+  return *ptr_address;
 }
