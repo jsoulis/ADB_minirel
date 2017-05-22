@@ -150,29 +150,30 @@ void test_operation()
   assert(is_operation_true(c1, c2, strlen(c1), 'c', NE_OP) == TRUE);
   assert(is_operation_true(c1, c1, strlen(c1), 'c', NE_OP) == FALSE);
 }
-void test_find_ptr_index()
+void test_find_ptr_index_internal()
 {
-  char keys[] = {(char)1, (char)0, (char)3, (char)11};
-  uint8_t key_length = sizeof(char);
-  uint8_t ptr_length = sizeof(char);
+  int keys[] = {1, 0, 3, 11};
+  uint8_t key_length = sizeof(int);
   int key_count = 3;
-  char pairs[] = {0x5, 0x1, 0x6, 0x3, 0x7, 0xA, 0x8};
+  int i_pairs[] = {0x5, 0x1, 0x6, 0x3, 0x7, 0xA, 0x8};
 
-  int index = find_ptr_index(&keys[0], key_length, 'c', ptr_length, pairs, key_count);
+  char *pairs = (char*)i_pairs;
+
+  int index = find_ptr_index_internal((char*)&keys[0], key_length, 'c', pairs, key_count);
   assert(index == 1);
-  assert(*get_ptr_address(pairs, key_length, ptr_length, index) == 6);
+  assert(*get_ptr_address_internal(pairs, key_length, index) == 6);
 
-  index = find_ptr_index(&keys[1], key_length, 'c', ptr_length, pairs, key_count);
+  index = find_ptr_index_internal((char*)&keys[1], key_length, 'c', pairs, key_count);
   assert(index == 0);
-  assert(*get_ptr_address(pairs, key_length, ptr_length, index) == 5);
+  assert(*get_ptr_address_internal(pairs, key_length, index) == 5);
 
-  index = find_ptr_index(&keys[2], key_length, 'c', ptr_length, pairs, key_count);
+  index = find_ptr_index_internal((char*)&keys[2], key_length, 'c', pairs, key_count);
   assert(index == 2);
-  assert(*get_ptr_address(pairs, key_length, ptr_length, index) == 7);
+  assert(*get_ptr_address_internal(pairs, key_length, index) == 7);
 
-  index = find_ptr_index(&keys[3], key_length, 'c', ptr_length, pairs, key_count);
+  index = find_ptr_index_internal((char*)&keys[3], key_length, 'c', pairs, key_count);
   assert(index == 3);
-  assert(*get_ptr_address(pairs, key_length, ptr_length, index) == 8);
+  assert(*get_ptr_address_internal(pairs, key_length, index) == 8);
 }
 
 void test_open_close_scan() {
@@ -277,13 +278,59 @@ void test_insert_scan_simple() {
   assert(AM_DestroyIndex("insert", 0) == AME_OK);
 }
 
+/* Insert a bigger element before a smaller one.
+They should now trade places */
+void test_insert_scan_reorder() {
+  int am_fd = 0;
+  int scan_id = 0;
+
+  int key1 = 100, key2 = 50, key3 = 3;
+  RECID value1, value2, value3, invalid_value, next_entry;
+  invalid_value.pagenum = -1, invalid_value.recnum = -1;
+
+  value1.pagenum = 10, value1.recnum = 11;
+  value2.pagenum = 100, value2.recnum = 110;
+  value3.pagenum = 1, value3.recnum = 5;
+
+  assert(AM_CreateIndex("insert", 0, 'i', 4, FALSE) == AME_OK);
+  assert(AM_OpenIndex("insert", 0) == am_fd);
+
+  assert(AM_InsertEntry(am_fd, (char *)&key1, value1) == AME_OK);
+  assert(AM_InsertEntry(am_fd, (char *)&key2, value2) == AME_OK);
+  assert(AM_InsertEntry(am_fd, (char *)&key3, value3) == AME_OK);
+
+  /* Should now be in the order key3, key2, key1 */
+
+  assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
+
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == value3.pagenum &&
+         next_entry.recnum == value3.recnum);
+
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == value2.pagenum &&
+         next_entry.recnum == value2.recnum);
+
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == value1.pagenum &&
+         next_entry.recnum == value1.recnum);
+
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == invalid_value.pagenum &&
+         next_entry.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+  assert(AM_CloseIndex(am_fd) == AME_OK);
+  assert(AM_DestroyIndex("insert", 0) == AME_OK);
+}
+
 int main()
 {
   test_filename_size();
   test_filename_with_index();
   test_max_node_count();
   test_operation();
-  test_find_ptr_index();
+  test_find_ptr_index_internal();
 
   /* AM functions */
   AM_Init();
@@ -294,6 +341,7 @@ int main()
   test_insert_invalid_fd();
   test_find_next_entry_invalid_id();
   test_insert_scan_simple();
+  test_insert_scan_reorder();
 
   printf("Passed all tests\n");
   return 0;
