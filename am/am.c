@@ -317,7 +317,9 @@ int AM_InsertEntry(int am_fd, char *key, RECID value) {
 
   /* Inserting in the middle of a leaf */
   if (ptr_index < le_node->valid_entries) {
-
+    memmove(le_node->pairs + (le_node->key_length + LEAF_NODE_PTR_SIZE) * (ptr_index + 1),
+           le_node->pairs + (le_node->key_length + LEAF_NODE_PTR_SIZE) * ptr_index,
+           (le_node->key_length + LEAF_NODE_PTR_SIZE) * (le_node->valid_entries - ptr_index));
   }
 
   *get_ptr_address_leaf(le_node->pairs, le_node->key_length, ptr_index) = value;
