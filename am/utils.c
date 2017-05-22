@@ -287,9 +287,6 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
   /* Find middle key */
   char *mid_key = get_key_address_leaf(le_node->pairs, le_node->key_length,
                                        max_node_count(le_node->key_length) / 2);
-  if (is_operation_true(key, mid_key, le_node->key_length, le_node->key_type, LT_OP)) {
-    mid_key = key;
-  }
 
   if ((err = find_parent(entry->fd, entry->root, key, &parent) != AME_OK)) {
     return err;
