@@ -539,6 +539,55 @@ void test_insert_merge() {
   assert(AM_DestroyIndex("insert", 0) == AME_OK);
 }
 
+void test_insert_merge_unorder() {
+  int i;
+  RECID *values;
+  int *keys;
+  RECID value, invalid_value;
+  int key_size = 4;
+
+
+  int am_fd = 0, scan_id = 0;
+  int key_count = max_node_count(key_size) * 2;
+  invalid_value.pagenum = -1, invalid_value.recnum = -1;
+
+  values = malloc(key_count * sizeof(RECID));
+  keys = malloc(key_count * sizeof(int));
+
+  for (i = 0; i < key_count / 2; ++i) {
+    keys[i] = i + 500;
+    keys[i + key_count / 2] = i;
+    values[i].pagenum = 100 + i, values[i].recnum = 200 + i;
+    values[i + key_count / 2].pagenum = 1000 + i, values[i + key_count / 2].recnum = 2000 + i;
+  }
+
+  assert(AM_CreateIndex("insert", 0, 'i', 4, FALSE) == AME_OK);
+  assert(AM_OpenIndex("insert", 0) == am_fd);
+  
+  for (i = 0; i < key_count; ++i) {
+    assert(AM_InsertEntry(am_fd, (char*)(keys + i), values[i]) == AME_OK);
+  }
+
+
+  assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
+  for (i = key_count / 2; i < key_count; ++i) {
+    value = AM_FindNextEntry(scan_id);
+    assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
+  }
+  for (i = 0; i < key_count / 2; ++ i) {
+    value = AM_FindNextEntry(scan_id);
+    assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
+  }
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == invalid_value.pagenum &&
+         value.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+  assert(AM_CloseIndex(am_fd) == AME_OK);
+  assert(AM_DestroyIndex("insert", 0) == AME_OK);
+}
+
 int main() {
   test_filename_size();
   test_filename_with_index();
@@ -560,6 +609,7 @@ int main() {
 
   test_scan_operations();
   test_insert_merge();
+  test_insert_merge_unorder();
 
   printf("Passed all tests\n");
   return 0;
