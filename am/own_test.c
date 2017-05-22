@@ -220,6 +220,37 @@ void test_open_close_scan() {
   assert(AM_CloseIndexScan(5) == AME_INVALIDSCANDESC);
 }
 
+void test_insert_invalid_fd() {
+  int key = 1;
+  int am_fd = 0;
+  RECID value; value.recnum = 0, value.pagenum = 0;
+
+  assert(AM_InsertEntry(0, (char*)&key, value) == AME_FD);
+  assert(AM_InsertEntry(-1, (char*)&key, value) == AME_FD);
+  assert(AM_InsertEntry(AM_ITAB_SIZE, 0, value) == AME_FD);
+
+  assert(AM_CreateIndex("insert_invalid", 0, 'i', 4, FALSE) == AME_OK);
+  assert(AM_OpenIndex("insert_invalid", 0) == am_fd);
+  assert(AM_InsertEntry(am_fd, (char*)&key, value) == AME_OK);
+
+  assert(AM_CloseIndex(am_fd) == AME_OK);
+  assert(AM_DestroyIndex("insert_invalid", 0) == AME_OK);
+}
+
+void test_find_next_entry_invalid_id() {
+
+  int scan_id = 0;
+  RECID value;
+
+  value = AM_FindNextEntry(-1);
+  assert(value.recnum == -1 && value.pagenum == -1 && AMerrno == AME_INVALIDSCANDESC);
+  value = AM_FindNextEntry(MAXISCANS);
+  assert(value.recnum== -1 && value.pagenum == -1 && AMerrno == AME_INVALIDSCANDESC);
+  /* Not yet open */
+  value = AM_FindNextEntry(scan_id);
+  assert(value.recnum == -1 && value.pagenum == -1 && AMerrno == AME_INVALIDSCANDESC);
+}
+
 void test_insert_scan_simple() {
   int am_fd = 0;
   int scan_id = 0;
@@ -259,6 +290,9 @@ int main()
   test_create_destroy_index();
   test_open_close_index();
   test_open_close_scan();
+  
+  test_insert_invalid_fd();
+  test_find_next_entry_invalid_id();
   test_insert_scan_simple();
 
   printf("Passed all tests\n");

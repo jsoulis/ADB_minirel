@@ -20,4 +20,11 @@ bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, uint8
 char* get_key_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int index);
 char* get_ptr_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int index);
 
+/*
+ Should be called when the first key is inserted 
+Returns AME_OK on success, error otherwise
+Caller should set AMerrno
+ */
+int initialize_root_node(index_table_entry *entry, char *key);
+
 #endif
