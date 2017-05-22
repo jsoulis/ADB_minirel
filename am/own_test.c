@@ -365,8 +365,134 @@ void test_insert_scan_reorder() {
   assert(AM_DestroyIndex("insert", 0) == AME_OK);
 }
 
-int main()
-{
+void test_scan_operations() {
+  int i;
+  RECID values[100];
+  int keys[100];
+  RECID value, invalid_value;
+  int key_index;
+
+  int am_fd = 0, scan_id = 0;
+  invalid_value.pagenum = -1, invalid_value.recnum = -1;
+
+  for (i = 0; i < 100; ++i) {
+    keys[i] = i + 500;
+    values[i].pagenum = 100 + i, values[i].recnum = 200 + i;
+  }
+
+  assert(AM_CreateIndex("insert", 0, 'i', 4, FALSE) == AME_OK);
+  assert(AM_OpenIndex("insert", 0) == am_fd);
+  
+  for (i = 0; i < 100; ++i) {
+    assert(AM_InsertEntry(am_fd, (char*)&keys[i], values[i]) == AME_OK);
+  }
+
+  /* All keys */
+  assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
+  for (i = 0; i < 100; ++i) {
+    value = AM_FindNextEntry(scan_id);
+    assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
+  }
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == invalid_value.pagenum &&
+         value.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+
+  /* EQ_OP */
+  key_index = 23;
+  assert(AM_OpenIndexScan(am_fd, EQ_OP, (char*)&keys[key_index]) == scan_id);
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == values[key_index].pagenum &&
+         value.recnum == values[key_index].recnum);
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == invalid_value.pagenum &&
+         value.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+
+  /* LT_OP */
+  key_index = 89;
+  assert(AM_OpenIndexScan(am_fd, LT_OP, (char*)&keys[key_index]) == scan_id);
+  for (i = 0; i < key_index; ++i) {
+    value = AM_FindNextEntry(scan_id);
+    assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
+  }
+
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == invalid_value.pagenum &&
+         value.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+
+  /* GT_OP */
+  key_index = 14;
+  assert(AM_OpenIndexScan(am_fd, GT_OP, (char*)&keys[key_index]) == scan_id);
+  for (i = key_index + 1; i < 100; ++i) {
+    value = AM_FindNextEntry(scan_id);
+    assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
+  }
+
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == invalid_value.pagenum &&
+         value.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+  /* LE_OP */
+  key_index = 57;
+  assert(AM_OpenIndexScan(am_fd, LE_OP, (char*)&keys[key_index]) == scan_id);
+  for (i = 0; i <= key_index; ++i) {
+    value = AM_FindNextEntry(scan_id);
+    assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
+  }
+
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == invalid_value.pagenum &&
+         value.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+
+  /* GE_OP */
+  key_index = 44;
+  assert(AM_OpenIndexScan(am_fd, GE_OP, (char*)&keys[key_index]) == scan_id);
+  for (i = key_index; i < 100; ++i) {
+    value = AM_FindNextEntry(scan_id);
+    assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
+  }
+
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == invalid_value.pagenum &&
+         value.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+
+  /* NE_OP */
+  key_index = 66;
+  assert(AM_OpenIndexScan(am_fd, NE_OP, (char*)&keys[key_index]) == scan_id);
+  for (i = 0; i < 100; ++i) {
+    if (i == key_index) continue;
+
+    value = AM_FindNextEntry(scan_id);
+    assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
+  }
+
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == invalid_value.pagenum &&
+         value.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+  assert(AM_CloseIndex(am_fd) == AME_OK);
+  assert(AM_DestroyIndex("insert", 0) == AME_OK);
+}
+
+int main() {
   test_filename_size();
   test_filename_with_index();
   test_max_node_count();
@@ -379,11 +505,13 @@ int main()
   test_create_destroy_index();
   test_open_close_index();
   test_open_close_scan();
-  
+
   test_insert_invalid_fd();
   test_find_next_entry_invalid_id();
   test_insert_scan_simple();
   test_insert_scan_reorder();
+
+  test_scan_operations();
 
   printf("Passed all tests\n");
   return 0;
