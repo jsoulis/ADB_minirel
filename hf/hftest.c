@@ -34,7 +34,7 @@ struct rec_struct
 void hftest1()
 {
 
-  int i,fd; 
+  int i,fd;
   RECID recid;
   RECID next_recid;
   char recbuf[RECSIZE];
@@ -51,7 +51,7 @@ void hftest1()
      HF_PrintError("Problem opening HF file.\n");
 
   /* Adding the records */
-    
+
   for (i = 0; i < NUMBER; i++)
   {
      memset(recbuf,' ',RECSIZE);
@@ -63,7 +63,7 @@ void hftest1()
         HF_PrintError("Problem inserting record.\n");
         exit(1);
      }
-  }   
+  }
 
   /* Getting the records */
 
@@ -73,12 +73,12 @@ void hftest1()
       HF_PrintError("Problem getting first record.\n");
       exit(1);
   }
-   
+
   i = 0;
   while (HF_ValidRecId(fd,next_recid))
   {
     /* delete record if 'i' is odd numbered */
-    if ((i % 2) != 0) 
+    if ((i % 2) != 0)
     {
        printf("deleting record: %s\n", record);
        if (HF_DeleteRec(fd, next_recid) != HFE_OK){
@@ -117,12 +117,12 @@ void hftest2()
    /* inserts and delete records in FILE1 */
    hftest1();
 
-   if ((fd = HF_OpenFile(FILE1)) < 0) 
+   if ((fd = HF_OpenFile(FILE1)) < 0)
    {
-      HF_PrintError("Problem opening FILE1\n"); 
+      HF_PrintError("Problem opening FILE1\n");
       exit(1);
    }
-    
+
    /* clearing up the record */
    memset(record, ' ', RECSIZE);
 
@@ -162,18 +162,18 @@ int insert_struc_recs(char *filename)
   /* making sure file doesn't exists */
   unlink(filename);
 
-  /* Creating file with records of type rec_struct */  
+  /* Creating file with records of type rec_struct */
   if (HF_CreateFile(filename, sizeof(struct rec_struct)) != HFE_OK) {
      HF_PrintError("Problem creating file.\n");
      exit(1);
   }
-  
+
   /* Opening the file to get the file descriptor */
   if ((fd = HF_OpenFile(filename)) < 0) {
      HF_PrintError("Problem opening file\n.");
      exit(1);
   }
-  
+
   /* Adding the records. */
 
   for (i = 0; i < NUMBER; i++) {
@@ -181,7 +181,7 @@ int insert_struc_recs(char *filename)
      sprintf(record.string_val, "entry%d", i);
      record.float_val = (float)i;
      record.int_val = i;
-    
+
      printf("inserting structured record: (%s, %f, %d)\n",
 		record.string_val, record.float_val, record.int_val);
 
@@ -192,7 +192,7 @@ int insert_struc_recs(char *filename)
         exit(1);
      }
   }
-  
+
   if (HF_CloseFile(fd) != HFE_OK) {
     HF_PrintError("Problem closing file.\n");
     exit(1);
@@ -210,7 +210,7 @@ int read_string_recs(char *filename)
   struct rec_struct record;
   RECID recid, next_recid;
   char recbuf[RECSIZE];
- 
+
   /* opening the file */
   if ((fd = HF_OpenFile(filename)) < 0) {
      HF_PrintError("Problem opening file.\n");
@@ -223,7 +223,7 @@ int read_string_recs(char *filename)
      HF_PrintError("Problem getting record.\n");
      exit(1);
   }
-  
+
   /* getting the rest of the records */
   while (HF_ValidRecId(fd,recid)) {
      /* printing the record value */
@@ -248,8 +248,8 @@ int read_struc_recs(char *filename)
   int fd;
   struct rec_struct record;
   RECID recid, next_recid;
-  
- 
+
+
   /* opening the file */
   if ((fd = HF_OpenFile(filename)) < 0) {
      HF_PrintError("Problem opening file.\n");
@@ -262,12 +262,12 @@ int read_struc_recs(char *filename)
      HF_PrintError("Problem getting record.\n");
      exit(1);
   }
-  
+
   /* getting the rest of the records */
   while (HF_ValidRecId(fd,recid)) {
      /* printing the record value */
      printf("retrieved structured record: (%s, %f, %d)\n",
-		record.string_val, record.float_val, record.int_val); 
+		record.string_val, record.float_val, record.int_val);
      next_recid = HF_GetNextRec(fd, recid, (char *)&record);
      recid = next_recid;
   }
@@ -287,26 +287,26 @@ int read_struc_recs(char *filename)
 /* will be retrived.                                     */
 /*********************************************************/
 
-void hftest3() 
+void hftest3()
 {
-  int fd, sd;  
+  int fd, sd;
   RECID recid, saved_recid;
   struct rec_struct record;
   float value;
 
   /* making sure file doesn't exits */
   unlink(FILE2);
-  
+
   /* inserting records in file */
-  insert_struc_recs(FILE2); 
-  read_struc_recs(FILE2); 
+  insert_struc_recs(FILE2);
+  read_struc_recs(FILE2);
 
   /* opening the file because we need 'fd' for opening the scan */
   if ((fd = HF_OpenFile(FILE2)) < 0)
   {
      HF_PrintError("Problem opening file.\n");
      exit(1);
-  } 
+  }
 
   /* opening scan in the float field of struc rec_struc */
   /* with comparison operator greater or equal.           */
@@ -315,7 +315,7 @@ void hftest3()
 
   value = 50.0;
 
-  if ((sd = HF_OpenFileScan(fd,REAL_TYPE,sizeof(float),offsetof(struct rec_struct, 
+  if ((sd = HF_OpenFileScan(fd,REAL_TYPE,sizeof(float),offsetof(struct rec_struct,
 float_val),GE_OP,(char *)&value)) <0)
   {
      HF_PrintError("Problem opening scan\n.");

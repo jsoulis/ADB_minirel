@@ -1,9 +1,9 @@
 # Makefile for HF layer
 LIB	= hf
 INCDIR	= ${MINIREL_HOME}/h
-INCS	= 
-SRCS	= 
-TESTS	= hftest.c
+INCS	=
+SRCS	=
+TESTS	= hf.c
 OBJS	= ${SRCS:.c=.o}
 LIBS	= lib${LIB}.a ../pf/libpf.a ../bf/libbf.a
 
