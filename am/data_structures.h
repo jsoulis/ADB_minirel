@@ -4,6 +4,9 @@
 #include "stdint.h"
 #include "minirel.h"
 
+#define INTERNAL_NODE_PTR_SIZE (sizeof(int))
+#define LEAF_NODE_PTR_SIZE (sizeof(RECID))
+
 typedef enum { INTERNAL, LEAF } node_type;
 
 typedef struct

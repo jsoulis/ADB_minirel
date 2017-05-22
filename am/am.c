@@ -1,50 +1,44 @@
-#include "string.h"
 #include "stdlib.h"
+#include "string.h"
 
 #include "minirel.h"
 
 #include "am.h"
 #include "data_structures.h"
 #include "hf.h"
-#include "utils.h"
 #include "pf.h"
+#include "utils.h"
 
 index_table_entry index_table[AM_ITAB_SIZE];
 scan_table_entry scan_table[MAXISCANS];
 
-void AM_Init()
-{
+void AM_Init() {
   int i;
   HF_Init();
 
-  for (i = 0; i < AM_ITAB_SIZE; ++i)
-  {
+  for (i = 0; i < AM_ITAB_SIZE; ++i) {
     index_table[i].in_use = FALSE;
     index_table[i].filename = 0;
   }
 
-  for (i = 0; i < MAXISCANS; ++i)
-  {
+  for (i = 0; i < MAXISCANS; ++i) {
     scan_table[i].in_use = FALSE;
     scan_table[i].index_in_node = 0;
   }
 }
 
-int AM_CreateIndex(char *filename, int index_no, char attr_type, int attr_length,
-                   bool_t is_unique)
-{
+int AM_CreateIndex(char *filename, int index_no, char attr_type,
+                   int attr_length, bool_t is_unique) {
   internal_node *root;
   int fd, pagenum;
   char *filename_with_index;
 
-  if (!(attr_type == 'c' || attr_type == 'i' || attr_type == 'f'))
-  {
+  if (!(attr_type == 'c' || attr_type == 'i' || attr_type == 'f')) {
     AMerrno = AME_INVALIDATTRTYPE;
     return AMerrno;
   }
 
-  if (attr_length < 1 || attr_length > 255)
-  {
+  if (attr_length < 1 || attr_length > 255) {
     AMerrno = AME_INVALIDATTRLENGTH;
     return AMerrno;
   }
@@ -53,8 +47,7 @@ int AM_CreateIndex(char *filename, int index_no, char attr_type, int attr_length
   filename_with_index = malloc(sizeof_filename_with_index(filename, index_no));
   set_filename_with_index(filename, index_no, filename_with_index);
 
-  if (PF_CreateFile(filename_with_index) != PFE_OK)
-  {
+  if (PF_CreateFile(filename_with_index) != PFE_OK) {
     free(filename_with_index);
 
     AMerrno = AME_PF;
@@ -62,24 +55,21 @@ int AM_CreateIndex(char *filename, int index_no, char attr_type, int attr_length
   }
 
   fd = PF_OpenFile(filename_with_index);
-  if (fd < 0)
-  {
+  if (fd < 0) {
     free(filename_with_index);
 
     AMerrno = AME_PF;
     return AMerrno;
   }
 
-  if (PF_AllocPage(fd, &pagenum, ((char **)&root)) != PFE_OK)
-  {
+  if (PF_AllocPage(fd, &pagenum, ((char **)&root)) != PFE_OK) {
     free(filename_with_index);
 
     AMerrno = AME_PF;
     return AMerrno;
   }
 
-  if (attr_type == 'f' || attr_type == 'i')
-  {
+  if (attr_type == 'f' || attr_type == 'i') {
     attr_length = 4;
   }
 
@@ -89,16 +79,14 @@ int AM_CreateIndex(char *filename, int index_no, char attr_type, int attr_length
   root->key_length = (uint8_t)attr_length;
 
   /* Unpin and mark dirty */
-  if (PF_UnpinPage(fd, pagenum, TRUE) != PFE_OK)
-  {
+  if (PF_UnpinPage(fd, pagenum, TRUE) != PFE_OK) {
     free(filename_with_index);
 
     AMerrno = AME_PF;
     return AMerrno;
   }
 
-  if (PF_CloseFile(fd) != PFE_OK)
-  {
+  if (PF_CloseFile(fd) != PFE_OK) {
     free(filename_with_index);
 
     AMerrno = AME_PF;
@@ -111,15 +99,14 @@ int AM_CreateIndex(char *filename, int index_no, char attr_type, int attr_length
   return AME_OK;
 }
 
-int AM_DestroyIndex(char *filename, int index_no)
-{
+int AM_DestroyIndex(char *filename, int index_no) {
   int return_code = AME_OK;
-  char *filename_with_index = malloc(sizeof_filename_with_index(filename, index_no));
+  char *filename_with_index =
+      malloc(sizeof_filename_with_index(filename, index_no));
   set_filename_with_index(filename, index_no, filename_with_index);
   /* PF won't destroy a pinned file. So if we have the root pinned we can just
    * check like this */
-  if (PF_DestroyFile(filename_with_index) != PFE_OK)
-  {
+  if (PF_DestroyFile(filename_with_index) != PFE_OK) {
     AMerrno = AME_PF;
     return_code = AMerrno;
   }
@@ -128,22 +115,18 @@ int AM_DestroyIndex(char *filename, int index_no)
   return return_code;
 }
 
-int AM_OpenIndex(char *filename, int index_no)
-{
+int AM_OpenIndex(char *filename, int index_no) {
   char *filename_with_index;
   int i, fd, pagenum, am_fd = -1;
 
   /* Check if there is space in table */
-  for (i = 0; i < AM_ITAB_SIZE; ++i)
-  {
-    if (!index_table[i].in_use)
-    {
+  for (i = 0; i < AM_ITAB_SIZE; ++i) {
+    if (!index_table[i].in_use) {
       am_fd = i;
       break;
     }
   }
-  if (am_fd == -1)
-  {
+  if (am_fd == -1) {
     AMerrno = AME_FULLTABLE;
     return AMerrno;
   }
@@ -151,10 +134,9 @@ int AM_OpenIndex(char *filename, int index_no)
   filename_with_index = malloc(sizeof_filename_with_index(filename, index_no));
   set_filename_with_index(filename, index_no, filename_with_index);
 
-  for (i = 0; i < AM_ITAB_SIZE; ++i)
-  {
-    if (index_table[i].filename && strcmp(index_table[i].filename, filename_with_index) == 0)
-    {
+  for (i = 0; i < AM_ITAB_SIZE; ++i) {
+    if (index_table[i].filename &&
+        strcmp(index_table[i].filename, filename_with_index) == 0) {
       free(filename_with_index);
 
       AMerrno = AME_DUPLICATEOPEN;
@@ -163,16 +145,15 @@ int AM_OpenIndex(char *filename, int index_no)
   }
 
   fd = PF_OpenFile(filename_with_index);
-  if (fd < 0)
-  {
+  if (fd < 0) {
     free(filename_with_index);
 
     AMerrno = AME_PF;
     return AMerrno;
   }
 
-  if (PF_GetFirstPage(fd, &pagenum, (char **)&index_table[am_fd].root) != PFE_OK)
-  {
+  if (PF_GetFirstPage(fd, &pagenum, (char **)&index_table[am_fd].root) !=
+      PFE_OK) {
     free(filename_with_index);
 
     AMerrno = AME_PF;
@@ -185,13 +166,11 @@ int AM_OpenIndex(char *filename, int index_no)
   return am_fd;
 }
 
-int AM_CloseIndex(int am_fd)
-{
+int AM_CloseIndex(int am_fd) {
   int i;
   index_table_entry *entry;
 
-  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE)
-  {
+  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE) {
     AMerrno = AME_FD;
     return AMerrno;
   }
@@ -204,21 +183,18 @@ int AM_CloseIndex(int am_fd)
   }
 
   entry = &index_table[am_fd];
-  if (!entry->in_use)
-  {
+  if (!entry->in_use) {
     AMerrno = AME_FD;
     return AMerrno;
   }
 
   /* pagenum 0 should always be the root */
-  if (PF_UnpinPage(entry->fd, 0, FALSE) != PFE_OK)
-  {
+  if (PF_UnpinPage(entry->fd, 0, FALSE) != PFE_OK) {
     AMerrno = AME_FD;
     return AMerrno;
   }
 
-  if (PF_CloseFile(entry->fd) != PFE_OK)
-  {
+  if (PF_CloseFile(entry->fd) != PFE_OK) {
     AMerrno = AME_FD;
 
     return AMerrno;
@@ -230,37 +206,33 @@ int AM_CloseIndex(int am_fd)
   return AME_OK;
 }
 
-int AM_OpenIndexScan(int am_fd, int operation, char *key)
-{
+int AM_OpenIndexScan(int am_fd, int operation, char *key) {
   scan_table_entry *entry;
   int i;
   int scan_id = -1;
 
-  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE || !index_table[am_fd].in_use)
-  {
+  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE || !index_table[am_fd].in_use) {
     AMerrno = AME_FD;
 
     return AMerrno;
   }
 
   /* If the key is null, allow any operation */
-  if (key != 0 && !(operation == EQ_OP || operation == LT_OP || operation == GT_OP || operation == LE_OP || operation == GE_OP || operation == NE_OP))
-  {
+  if (key != 0 &&
+      !(operation == EQ_OP || operation == LT_OP || operation == GT_OP ||
+        operation == LE_OP || operation == GE_OP || operation == NE_OP)) {
     AMerrno = AME_INVALIDOP;
 
     return AMerrno;
   }
 
-  for (i = 0; i < MAXISCANS; ++i)
-  {
-    if (!scan_table[i].in_use)
-    {
+  for (i = 0; i < MAXISCANS; ++i) {
+    if (!scan_table[i].in_use) {
       scan_id = i;
       break;
     }
   }
-  if (scan_id == -1)
-  {
+  if (scan_id == -1) {
     AMerrno = AME_SCANTABLEFULL;
 
     return AMerrno;
@@ -277,8 +249,7 @@ int AM_OpenIndexScan(int am_fd, int operation, char *key)
   return scan_id;
 }
 
-int AM_CloseIndexScan(int scan_id)
-{
+int AM_CloseIndexScan(int scan_id) {
   scan_table_entry *entry;
   if (scan_id < 0 || scan_id >= MAXISCANS || !scan_table[scan_id].in_use) {
     AMerrno = AME_INVALIDSCANDESC;
@@ -303,21 +274,80 @@ Either simple case where we can just insert without trouble
 Push up and split
 Split recursively
 Leaf with duplicate keys are trying to split
- * Duplicate keys are already a key in parent => 
+ * Duplicate keys are already a key in parent =>
           push lower / higher depending on new key
  * Always keep duplicate values on the same leaf
    Move whichever side of the dups. that have fewer elements
 */
 
-int AM_InsertEntry(int am_fd, char *key, RECID value) {
-  (void)am_fd;
-  (void)key;
-  (void)value;
-  return 0;
+int AM_InsertEntry(int am_fd, char *key, RECID value) 
+{
+  index_table_entry *entry;
+  internal_node *in_node;
+  leaf_node *le_node;
+  int ptr_index, pagenum, prev_pagenum;
+  int err;
+
+  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE || !index_table[am_fd].in_use) {
+    AMerrno = AME_FD;
+    return AMerrno;
+  }
+
+  entry = &index_table[am_fd];
+  in_node = entry->root;
+
+  if (in_node->valid_entries == 0) {
+    if ((err = initialize_root_node(entry, key)) != AME_OK) {
+      AMerrno = err;
+      return AMerrno;
+    }
+  }
+
+  do {
+    in_node->pairs = (char *)&in_node->pairs + sizeof(char*);
+
+    ptr_index =
+        find_ptr_index(key, in_node->key_length, in_node->key_type,
+                       INTERNAL_NODE_PTR_SIZE, in_node->pairs,
+                       in_node->valid_entries);
+    pagenum = *get_ptr_address(in_node->pairs, in_node->key_length,
+                              INTERNAL_NODE_PTR_SIZE, ptr_index);
+
+    PF_GetThisPage(entry->fd, pagenum, (char **)&in_node);
+
+    /* Don't unpin root */
+    if (prev_pagenum != 0) {
+      PF_UnpinPage(entry->fd, prev_pagenum, FALSE);
+    }
+
+    prev_pagenum = pagenum;
+  } while (in_node->type == INTERNAL);
+
+  le_node = (leaf_node*)in_node;
+  le_node->pairs = (char*)&le_node->pairs + sizeof(char*);
+
+  ptr_index = find_ptr_index(key, le_node->key_length, le_node->key_type,
+                             LEAF_NODE_PTR_SIZE, le_node->pairs,
+                             le_node->valid_entries);
+  *(RECID*)get_ptr_address(le_node->pairs, le_node->key_length, LEAF_NODE_PTR_SIZE, ptr_index) = value;
+  memcpy(get_key_address(le_node->pairs, le_node->key_length,
+                         LEAF_NODE_PTR_SIZE, ptr_index),
+         key, le_node->key_length);
+  
+  if (PF_UnpinPage(entry->fd, pagenum, TRUE) != PFE_OK) {
+    AMerrno = AME_PF;
+    return AMerrno;
+  }
+  return AME_OK;
 }
 
 RECID AM_FindNextEntry(int scan_id) {
-  RECID value;
-  (void) scan_id;
-  return value;
+  RECID invalid_rec;
+  invalid_rec.recnum = -1, invalid_rec.pagenum = -1;
+  if (scan_id < 0 || scan_id >= MAXISCANS || !scan_table[scan_id].in_use) {
+    AMerrno = AME_INVALIDSCANDESC;
+    return invalid_rec;
+  }
+
+  return invalid_rec;
 }

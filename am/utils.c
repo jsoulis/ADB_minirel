@@ -3,6 +3,8 @@
 #include "string.h"
 
 #include "minirel.h"
+#include "am.h"
+#include "pf.h"
 #include "data_structures.h"
 
 int sizeof_filename_with_index(char *filename, int indexNo) {
@@ -119,7 +121,7 @@ int find_ptr_index(const char *key, uint8_t key_length, uint8_t key_type, uint8_
 {
   int i;
 
-  for (i = 0; i <= key_count; ++i) {
+  for (i = 0; i < key_count; ++i) {
     if (is_operation_true(key, get_key_address(pairs, key_length, ptr_length, i), key_length, key_type, LT_OP)) {
       break;
     }
@@ -133,4 +135,57 @@ char* get_key_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int i
 }
 char* get_ptr_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int index) {
   return pairs + (key_length + ptr_length) * index;
+}
+
+int initialize_root_node(index_table_entry *entry, char *key) {
+  int pagenum, pagenum_2;
+  leaf_node *le_node, *le_node_2;
+  char *key_address;
+  int *ptr_address;
+
+  internal_node *root = entry->root;
+  /* Make space for the pointer itself, and then the rest of the memory is for the pairs */
+  root->pairs = (char*)&root->pairs + sizeof(char*);
+
+  /* TODO: Make sure to unpin later */
+  if (PF_AllocPage(entry->fd, &pagenum, (char **)&le_node) != PFE_OK ||
+      PF_AllocPage(entry->fd, &pagenum_2, (char **)&le_node_2) != PFE_OK) {
+    return AME_PF;
+  }
+
+  le_node->type = LEAF;
+  le_node->valid_entries = 0;
+  le_node->key_type = root->key_type;
+  le_node->key_length = root->key_length;
+  le_node->prev_leaf = -1;
+  le_node->next_leaf = pagenum_2;
+
+  le_node_2->type = LEAF;
+  le_node_2->valid_entries = 0;
+  le_node_2->key_type = root->key_type;
+  le_node_2->key_length = root->key_length;
+  le_node_2->prev_leaf = pagenum;
+  le_node_2->next_leaf = -1;
+
+  if (PF_UnpinPage(entry->fd, pagenum, TRUE) != PFE_OK ||
+      PF_UnpinPage(entry->fd, pagenum_2, TRUE) != PFE_OK) {
+    return AME_PF;
+  }
+
+  key_address =
+      get_key_address(root->pairs, root->key_length, INTERNAL_NODE_PTR_SIZE, 0);
+  memcpy(key_address, key, root->key_length);
+
+  ptr_address = (int *)get_ptr_address(root->pairs, root->key_length,
+                                       INTERNAL_NODE_PTR_SIZE, 0);
+  memcpy(ptr_address, &pagenum, INTERNAL_NODE_PTR_SIZE);
+
+  ptr_address = (int *)get_ptr_address(root->pairs, root->key_length,
+                                       INTERNAL_NODE_PTR_SIZE, 1);
+  memcpy(ptr_address, &pagenum_2, INTERNAL_NODE_PTR_SIZE);
+
+  /* valid entries == keys */
+  root->valid_entries = 1;
+
+  return AME_OK;
 }
