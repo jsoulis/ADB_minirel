@@ -2,10 +2,10 @@
 
 #include "string.h"
 
-#include "minirel.h"
 #include "am.h"
-#include "pf.h"
 #include "data_structures.h"
+#include "minirel.h"
+#include "pf.h"
 
 int sizeof_filename_with_index(char *filename, int indexNo) {
   /* +1 because a dot is added */
@@ -41,28 +41,25 @@ int max_node_count(uint8_t key_length) {
   /* leaf nodes requires more memory, so let's just use that as an upper bound
    */
   int header_size, key_value_size, node_count;
-  header_size = sizeof(leaf_node) - sizeof(char*);
+  header_size = sizeof(leaf_node);
   key_value_size = key_length + sizeof(RECID);
 
-  /* There's one extra pointer at the start that's not exactly in a pair */
-  node_count = (PAGE_SIZE - header_size - sizeof(RECID)) / key_value_size;
+  node_count = (PAGE_SIZE - header_size) / key_value_size;
 
   return node_count;
 }
 
-bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, uint8_t key_type, int operation)
-{
+bool_t is_operation_true(const char *a, const char *b, uint8_t key_length,
+                         uint8_t key_type, int operation) {
   int a_i, b_i;
   float a_f, b_f;
-  
+
   int memcmp_code;
-  switch (key_type)
-  {
+  switch (key_type) {
   case 'i':
     a_i = *(int *)a;
     b_i = *(int *)b;
-    switch (operation)
-    {
+    switch (operation) {
     case EQ_OP:
       return a_i == b_i;
     case LT_OP:
@@ -78,9 +75,9 @@ bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, uint8
     }
     break;
   case 'f':
-    a_f = *(float*) a;
-    b_f = *(float*) b; 
-    switch( operation) {
+    a_f = *(float *)a;
+    b_f = *(float *)b;
+    switch (operation) {
     case EQ_OP:
       return a_f == b_f;
     case LT_OP:
@@ -97,7 +94,7 @@ bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, uint8
     break;
   case 'c':
     memcmp_code = memcmp(a, b, key_length);
-    switch( operation) {
+    switch (operation) {
     case EQ_OP:
       return memcmp_code == 0;
     case LT_OP:
@@ -116,46 +113,51 @@ bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, uint8
   return FALSE;
 }
 
-
-int find_ptr_index_internal(const char *key, uint8_t key_length, uint8_t key_type, char *pairs, int key_count)
-{
+int find_ptr_index_internal(const char *key, uint8_t key_length,
+                            uint8_t key_type, char *pairs, int key_count) {
   int i;
 
   for (i = 0; i < key_count; ++i) {
-    if (is_operation_true(key, get_key_address_internal(pairs, key_length, i), key_length, key_type, LT_OP)) {
+    if (is_operation_true(key, get_key_address_internal(pairs, key_length, i),
+                          key_length, key_type, LT_OP)) {
       break;
     }
   }
-  /* If it's never less than, the last spot is the index we want to insert into */
+  /* If it's never less than, the last spot is the index we want to insert into
+   */
   return i;
 }
 
-char* get_key_address_internal(char *pairs, uint8_t key_length, int index) {
-  return (pairs + INTERNAL_NODE_PTR_SIZE) + (key_length + INTERNAL_NODE_PTR_SIZE) * index;
+char *get_key_address_internal(char *pairs, uint8_t key_length, int index) {
+  return (pairs + INTERNAL_NODE_PTR_SIZE) +
+         (key_length + INTERNAL_NODE_PTR_SIZE) * index;
 }
-int* get_ptr_address_internal(char *pairs, uint8_t key_length, int index) {
-  return (int*)(pairs + (key_length + INTERNAL_NODE_PTR_SIZE) * index);
+int *get_ptr_address_internal(char *pairs, uint8_t key_length, int index) {
+  return (int *)(pairs + (key_length + INTERNAL_NODE_PTR_SIZE) * index);
 }
 
-int find_ptr_index_leaf(const char *key, uint8_t key_length, uint8_t key_type, char *pairs, int key_count)
-{
+int find_ptr_index_leaf(const char *key, uint8_t key_length, uint8_t key_type,
+                        char *pairs, int key_count) {
   int i;
 
   for (i = 0; i < key_count; ++i) {
-    if (is_operation_true(key, get_key_address_leaf(pairs, key_length, i), key_length, key_type, LT_OP)) {
+    if (is_operation_true(key, get_key_address_leaf(pairs, key_length, i),
+                          key_length, key_type, LE_OP)) {
       break;
     }
   }
-  /* If it's never less than, the last spot is the index we want to insert into */
+  /* If it's never less than, the last spot is the index we want to insert into
+   */
   return i;
 }
 
-char* get_key_address_leaf(char *pairs, uint8_t key_length, int index) {
+char *get_key_address_leaf(char *pairs, uint8_t key_length, int index) {
   return pairs + (key_length + LEAF_NODE_PTR_SIZE) * index;
 }
 
-RECID* get_ptr_address_leaf(char *pairs, uint8_t key_length, int index) {
-  return (RECID*)((pairs + key_length) + (key_length + INTERNAL_NODE_PTR_SIZE) * index);
+RECID *get_ptr_address_leaf(char *pairs, uint8_t key_length, int index) {
+  return (RECID *)((pairs + key_length) +
+                   (key_length + LEAF_NODE_PTR_SIZE) * index);
 }
 
 int initialize_root_node(index_table_entry *entry, char *key) {
@@ -165,8 +167,9 @@ int initialize_root_node(index_table_entry *entry, char *key) {
   int *ptr_address;
 
   internal_node *root = entry->root;
-  /* Make space for the pointer itself, and then the rest of the memory is for the pairs */
-  root->pairs = (char*)&root->pairs + sizeof(char*);
+  /* Make space for the pointer itself, and then the rest of the memory is for
+   * the pairs */
+  root->pairs = (char *)&root->pairs + sizeof(char *);
 
   /* TODO: Make sure to unpin later */
   if (PF_AllocPage(entry->fd, &pagenum, (char **)&le_node) != PFE_OK ||
@@ -209,7 +212,8 @@ int initialize_root_node(index_table_entry *entry, char *key) {
 }
 
 /* Will unpin internal pages fetched inside, but not the one given */
-leaf_node *find_leaf(int fd, internal_node *root, const char *key, int *pagenum) {
+leaf_node *find_leaf(int fd, internal_node *root, const char *key,
+                     int *pagenum) {
   int ptr_index;
   int prev_pagenum;
   leaf_node *le_node;
@@ -225,7 +229,7 @@ leaf_node *find_leaf(int fd, internal_node *root, const char *key, int *pagenum)
       ptr_index = 0;
     }
     *pagenum = *get_ptr_address_internal(in_node->pairs, in_node->key_length,
-                                ptr_index);
+                                         ptr_index);
 
     PF_GetThisPage(fd, *pagenum, (char **)&in_node);
     in_node->pairs = (char *)&in_node->pairs + sizeof(char *);
@@ -238,14 +242,14 @@ leaf_node *find_leaf(int fd, internal_node *root, const char *key, int *pagenum)
     prev_pagenum = *pagenum;
   } while (in_node->type == INTERNAL);
 
-  le_node = (leaf_node*)in_node;
-  le_node->pairs = (char*)&le_node->pairs + sizeof(char*);
+  le_node = (leaf_node *)in_node;
+  le_node->pairs = (char *)&le_node->pairs + sizeof(char *);
 
-  
   return le_node;
 }
 
-int update_scan_entry_key_index(scan_table_entry *scan_entry, index_table_entry *index_entry) {
+int update_scan_entry_key_index(scan_table_entry *scan_entry,
+                                index_table_entry *index_entry) {
   int prev_pagenum;
   if (scan_entry->key_index + 1 >= scan_entry->leaf->valid_entries) {
     /* fetch new leaf */
