@@ -31,9 +31,17 @@ typedef struct HFftab_ele {
   bool_t scanActive; /*TRUE if scan is active*/
 }
 
+typedef struct HFScanTab_ele {
+  bool_t valid;
+  int HFfd;
+  RECID lastScannedRec;
+
+}
+
 /*table keeps track of OPEN HF files */
 HFftab_ele file_table[HF_FTAB_SIZE];
-
+/*table keeps track of OPEN scans*/
+HFScanTab_ele scan_table[MAXSCANS];
 void HF_Init(void) {
   //initialize other data strctures needed for this layer
 
