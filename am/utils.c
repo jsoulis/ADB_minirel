@@ -117,12 +117,12 @@ bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, uint8
 }
 
 
-int find_ptr_index(const char *key, uint8_t key_length, uint8_t key_type, uint8_t ptr_length, char *pairs, int key_count)
+int find_ptr_index_internal(const char *key, uint8_t key_length, uint8_t key_type, char *pairs, int key_count)
 {
   int i;
 
   for (i = 0; i < key_count; ++i) {
-    if (is_operation_true(key, get_key_address(pairs, key_length, ptr_length, i), key_length, key_type, LT_OP)) {
+    if (is_operation_true(key, get_key_address_internal(pairs, key_length, i), key_length, key_type, LT_OP)) {
       break;
     }
   }
@@ -130,11 +130,32 @@ int find_ptr_index(const char *key, uint8_t key_length, uint8_t key_type, uint8_
   return i;
 }
 
-char* get_key_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int index) {
-  return (pairs + ptr_length) + (key_length + ptr_length) * index;
+char* get_key_address_internal(char *pairs, uint8_t key_length, int index) {
+  return (pairs + INTERNAL_NODE_PTR_SIZE) + (key_length + INTERNAL_NODE_PTR_SIZE) * index;
 }
-char* get_ptr_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int index) {
-  return pairs + (key_length + ptr_length) * index;
+int* get_ptr_address_internal(char *pairs, uint8_t key_length, int index) {
+  return (int*)(pairs + (key_length + INTERNAL_NODE_PTR_SIZE) * index);
+}
+
+int find_ptr_index_leaf(const char *key, uint8_t key_length, uint8_t key_type, char *pairs, int key_count)
+{
+  int i;
+
+  for (i = 0; i < key_count; ++i) {
+    if (is_operation_true(key, get_key_address_leaf(pairs, key_length, i), key_length, key_type, LT_OP)) {
+      break;
+    }
+  }
+  /* If it's never less than, the last spot is the index we want to insert into */
+  return i;
+}
+
+char* get_key_address_leaf(char *pairs, uint8_t key_length, int index) {
+  return pairs + (key_length + LEAF_NODE_PTR_SIZE) * index;
+}
+
+RECID* get_ptr_address_leaf(char *pairs, uint8_t key_length, int index) {
+  return (RECID*)((pairs + key_length) + (key_length + INTERNAL_NODE_PTR_SIZE) * index);
 }
 
 int initialize_root_node(index_table_entry *entry, char *key) {
@@ -172,16 +193,13 @@ int initialize_root_node(index_table_entry *entry, char *key) {
     return AME_PF;
   }
 
-  key_address =
-      get_key_address(root->pairs, root->key_length, INTERNAL_NODE_PTR_SIZE, 0);
+  key_address = get_key_address_internal(root->pairs, root->key_length, 0);
   memcpy(key_address, key, root->key_length);
 
-  ptr_address = (int *)get_ptr_address(root->pairs, root->key_length,
-                                       INTERNAL_NODE_PTR_SIZE, 0);
+  ptr_address = get_ptr_address_internal(root->pairs, root->key_length, 0);
   memcpy(ptr_address, &pagenum, INTERNAL_NODE_PTR_SIZE);
 
-  ptr_address = (int *)get_ptr_address(root->pairs, root->key_length,
-                                       INTERNAL_NODE_PTR_SIZE, 1);
+  ptr_address = get_ptr_address_internal(root->pairs, root->key_length, 1);
   memcpy(ptr_address, &pagenum_2, INTERNAL_NODE_PTR_SIZE);
 
   /* valid entries == keys */
@@ -200,14 +218,14 @@ leaf_node *find_leaf(int fd, internal_node *root, const char *key, int *pagenum)
 
     /* If no key, go to first child */
     if (key) {
-      ptr_index = find_ptr_index(key, in_node->key_length, in_node->key_type,
-                                 INTERNAL_NODE_PTR_SIZE, in_node->pairs,
-                                 in_node->valid_entries);
+      ptr_index =
+          find_ptr_index_internal(key, in_node->key_length, in_node->key_type,
+                                  in_node->pairs, in_node->valid_entries);
     } else {
       ptr_index = 0;
     }
-    *pagenum = *get_ptr_address(in_node->pairs, in_node->key_length,
-                                INTERNAL_NODE_PTR_SIZE, ptr_index);
+    *pagenum = *get_ptr_address_internal(in_node->pairs, in_node->key_length,
+                                ptr_index);
 
     PF_GetThisPage(fd, *pagenum, (char **)&in_node);
     in_node->pairs = (char *)&in_node->pairs + sizeof(char *);

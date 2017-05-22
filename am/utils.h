@@ -12,13 +12,16 @@ void set_filename_with_index(char *filename, int indexNo, char *updatedName);
 
 int max_node_count(uint8_t key_length);
 
-/* Find the pointer index where to input the new key-value pair */
-int find_ptr_index(const char *key, uint8_t key_length, uint8_t key_type, uint8_t ptr_length, char *pairs, int key_count);
 
 bool_t is_operation_true(const char *a, const char *b, uint8_t key_length, uint8_t key_type, int operation);
 
-char* get_key_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int index);
-char* get_ptr_address(char *pairs, uint8_t key_length, uint8_t ptr_length, int index);
+int find_ptr_index_internal(const char *key, uint8_t key_length, uint8_t key_type, char *pairs, int key_count);
+char* get_key_address_internal(char *pairs, uint8_t key_length, int index);
+int* get_ptr_address_internal(char *pairs, uint8_t key_length, int index);
+
+int find_ptr_index_leaf(const char *key, uint8_t key_length, uint8_t key_type, char *pairs, int key_count);
+char* get_key_address_leaf(char *pairs, uint8_t key_length, int index);
+RECID* get_ptr_address_leaf(char *paris, uint8_t key_length, int index);
 
 /*
  Should be called when the first key is inserted 
