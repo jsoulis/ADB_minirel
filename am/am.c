@@ -73,6 +73,8 @@ int AM_CreateIndex(char *filename, int index_no, char attr_type,
     attr_length = 4;
   }
 
+  root->type = INTERNAL;
+  root->pagenum = 0;
   root->valid_entries = 0;
   root->key_type = attr_type;
   /* max length is 255 */
@@ -314,6 +316,15 @@ int AM_InsertEntry(int am_fd, char *key, RECID value) {
   ptr_index = find_ptr_index_leaf(key, le_node->key_length, le_node->key_type,
                                   le_node->pairs, le_node->valid_entries);
 
+                          
+  /* merge up */
+  if (le_node->valid_entries == max_node_count(le_node->key_length)) {
+    if ((err = merge(entry, key, le_node)) != AME_OK) {
+      AMerrno = err;
+      return AMerrno;
+    }
+    return AM_InsertEntry(am_fd, key, value);
+  }
 
   /* Inserting in the middle of a leaf */
   if (ptr_index < le_node->valid_entries) {

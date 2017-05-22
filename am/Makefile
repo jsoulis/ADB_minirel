@@ -5,8 +5,8 @@ INCS	=
 SRCS	= am.c utils.c
 TESTS	= amtest.c
 OBJS	= ${SRCS:.c=.o}
-LIBS	= lib${LIB}.a ../pf/libpf.a ../hf/libhf.a ../bf/libbf.a
-MOCK_LIBS = lib${LIB}.a ../pf/libpf.a libhfmock.a ../bf/libbf.a
+LIBS	= lib${LIB}.a ../pf/libpf.a ../hf/libhf.a ../bf/libbf.a -lm
+MOCK_LIBS = lib${LIB}.a ../pf/libpf.a libhfmock.a ../bf/libbf.a -lm
 
 #############################################################################
 # This macro definition can be overwritten by command-line definitions.
