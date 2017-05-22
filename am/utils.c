@@ -189,3 +189,68 @@ int initialize_root_node(index_table_entry *entry, char *key) {
 
   return AME_OK;
 }
+
+/* Will unpin internal pages fetched inside, but not the one given */
+leaf_node *find_leaf(int fd, internal_node *root, const char *key, int *pagenum) {
+  int ptr_index;
+  int prev_pagenum;
+  leaf_node *le_node;
+  internal_node *in_node = root;
+  do {
+
+    /* If no key, go to first child */
+    if (key) {
+      ptr_index = find_ptr_index(key, in_node->key_length, in_node->key_type,
+                                 INTERNAL_NODE_PTR_SIZE, in_node->pairs,
+                                 in_node->valid_entries);
+    } else {
+      ptr_index = 0;
+    }
+    *pagenum = *get_ptr_address(in_node->pairs, in_node->key_length,
+                                INTERNAL_NODE_PTR_SIZE, ptr_index);
+
+    PF_GetThisPage(fd, *pagenum, (char **)&in_node);
+    in_node->pairs = (char *)&in_node->pairs + sizeof(char *);
+
+    /* Don't unpin root */
+    if (prev_pagenum != 0) {
+      PF_UnpinPage(fd, prev_pagenum, FALSE);
+    }
+
+    prev_pagenum = *pagenum;
+  } while (in_node->type == INTERNAL);
+
+  le_node = (leaf_node*)in_node;
+  le_node->pairs = (char*)&le_node->pairs + sizeof(char*);
+
+  
+  return le_node;
+}
+
+int update_scan_entry_key_index(scan_table_entry *scan_entry, index_table_entry *index_entry) {
+  int prev_pagenum;
+  if (scan_entry->key_index + 1 >= scan_entry->leaf->valid_entries) {
+    /* fetch new leaf */
+    if (scan_entry->leaf->next_leaf == -1) {
+      return AME_EOF;
+    }
+
+    scan_entry->key_index = 0;
+    prev_pagenum = scan_entry->leaf_pagenum;
+    scan_entry->leaf_pagenum = scan_entry->leaf->next_leaf;
+    if (PF_GetThisPage(index_entry->fd, scan_entry->leaf_pagenum,
+                       (char **)&scan_entry->leaf) != PFE_OK) {
+      return AME_PF;
+    }
+    scan_entry->leaf->pairs =
+        (char *)&(scan_entry->leaf->pairs) + sizeof(scan_entry->leaf->pairs);
+
+    if (PF_UnpinPage(index_entry->fd, prev_pagenum, FALSE) != PFE_OK) {
+      return AME_PF;
+    }
+  } else {
+    ++scan_entry->key_index;
+  }
+
+  return AME_OK;
+}

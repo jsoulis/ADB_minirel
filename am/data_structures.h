@@ -56,8 +56,10 @@ typedef struct
   int am_fd;
   int operation;
   char *key;
-  int index_in_node;
-  leaf_node *node;
+  int key_index;
+  /* Unpin after done */
+  int leaf_pagenum;
+  leaf_node *leaf;
 } scan_table_entry;
 
 #endif
