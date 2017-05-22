@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "math.h"
 
 #include "string.h"
 
@@ -178,6 +179,7 @@ int initialize_root_node(index_table_entry *entry, char *key) {
   }
 
   le_node->type = LEAF;
+  le_node->pagenum = pagenum;
   le_node->valid_entries = 0;
   le_node->key_type = root->key_type;
   le_node->key_length = root->key_length;
@@ -185,6 +187,7 @@ int initialize_root_node(index_table_entry *entry, char *key) {
   le_node->next_leaf = pagenum_2;
 
   le_node_2->type = LEAF;
+  le_node_2->pagenum = pagenum_2;
   le_node_2->valid_entries = 0;
   le_node_2->key_type = root->key_type;
   le_node_2->key_length = root->key_length;
@@ -273,6 +276,115 @@ int update_scan_entry_key_index(scan_table_entry *scan_entry,
   } else {
     ++scan_entry->key_index;
   }
+
+  return AME_OK;
+}
+
+int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
+  internal_node *parent;
+  int index, pagenum, err;
+  leaf_node *le_node_new;
+  /* Find middle key */
+  char *mid_key = get_key_address_leaf(le_node->pairs, le_node->key_length,
+                                       max_node_count(le_node->key_length) / 2);
+  if (is_operation_true(key, mid_key, le_node->key_length, le_node->key_type, LT_OP)) {
+    mid_key = key;
+  }
+
+  if ((err = find_parent(entry->fd, entry->root, key, &parent) != AME_OK)) {
+    return err;
+  }
+
+  index = find_ptr_index_internal(mid_key, parent->key_length, parent->key_type,
+                                  parent->pairs, parent->valid_entries);
+  /* shift entries */
+  if (index < parent->valid_entries) {
+    memmove(parent->pairs + INTERNAL_NODE_PTR_SIZE +
+                (INTERNAL_NODE_PTR_SIZE + parent->key_length) * (index + 1),
+            parent->pairs + INTERNAL_NODE_PTR_SIZE +
+                (INTERNAL_NODE_PTR_SIZE + parent->key_length) * index,
+            (parent->key_length + INTERNAL_NODE_PTR_SIZE) *
+                (parent->valid_entries - index));
+  }
+
+  if (PF_AllocPage(entry->fd, &pagenum, (char**)&le_node_new) != PFE_OK) {
+    return AME_PF;
+  }
+
+  le_node_new->type = LEAF;
+  le_node_new->pagenum = pagenum;
+  le_node_new->key_type = le_node->key_type;
+  le_node_new->key_length = le_node->key_length;
+
+  le_node_new->next_leaf = le_node->next_leaf;
+  le_node_new->prev_leaf = le_node->pagenum;
+  le_node->next_leaf = le_node_new->pagenum;
+
+  le_node_new->pairs = (char*)&le_node_new->pairs + sizeof(le_node_new->pairs);
+
+  memcpy(le_node_new->pairs,
+         le_node->pairs +
+             (le_node->key_length + LEAF_NODE_PTR_SIZE) *
+                 (max_node_count(le_node->key_length) / 2),
+         (le_node->key_length + LEAF_NODE_PTR_SIZE) *
+             ceil(((float)max_node_count(le_node->key_length) / 2)));
+  le_node->valid_entries = max_node_count(le_node->key_length) / 2;
+  le_node_new->valid_entries = ceil(((float)max_node_count(le_node->key_length) / 2));
+
+  ++parent->valid_entries;
+  *get_ptr_address_internal(parent->pairs, parent->key_length, index + 1) = le_node_new->pagenum;
+  memcpy(get_key_address_internal(parent->pairs, parent->key_length, index), mid_key, parent->key_length);
+
+  if (PF_UnpinPage(entry->fd, le_node_new->pagenum, TRUE) != PFE_OK ||
+      PF_UnpinPage(entry->fd, le_node->pagenum, TRUE) != PFE_OK) {
+    return AME_FD;
+  }
+  return AME_OK;
+}
+
+/* Find parent:
+   Go from following the key
+   When the next node is a leaf, we found the parent
+*/
+int find_parent(int fd, internal_node *root, const char *key, internal_node **parent) {
+  int ptr_index;
+  int prev_pagenum = 0, pagenum;
+  internal_node *in_node = root, *prev_node;
+  do {
+    in_node->pairs = (char *)&in_node->pairs + sizeof(char *);
+    prev_node = in_node;
+
+    /* If no key, go to first child */
+    if (key) {
+      ptr_index =
+          find_ptr_index_internal(key, in_node->key_length, in_node->key_type,
+                                  in_node->pairs, in_node->valid_entries);
+    } else {
+      ptr_index = 0;
+    }
+    pagenum = *get_ptr_address_internal(in_node->pairs, in_node->key_length,
+                                        ptr_index);
+
+    if (PF_GetThisPage(fd, pagenum, (char **)&in_node) != PFE_OK) {
+      return AME_PF;
+    }
+
+    /* Don't unpin root */
+    if (prev_pagenum != 0) {
+      if (PF_UnpinPage(fd, prev_pagenum, FALSE) != PFE_OK) {
+        return AME_PF;
+      }
+    }
+
+    prev_pagenum = pagenum;
+  } while (in_node->type == INTERNAL);
+
+  /* Unpin the page we did not to take (but not root)*/
+  if (in_node->pagenum != 0 && PF_UnpinPage(fd, in_node->pagenum, FALSE) != PFE_OK) {
+    return AME_PF;
+  }
+
+  *parent = prev_node;
 
   return AME_OK;
 }

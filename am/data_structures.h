@@ -18,6 +18,7 @@ typedef struct
 typedef struct
 {
   node_type type;
+  int pagenum;
   int valid_entries;
   char key_type;
   /* Maximum size is 255 */
@@ -34,6 +35,7 @@ typedef struct
 typedef struct
 {
   node_type type;
+  int pagenum;
   int valid_entries;
   char key_type;
   /* Maximum size is 255 */

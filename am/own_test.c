@@ -508,8 +508,8 @@ void test_insert_merge() {
   int key_count = max_node_count(key_size) * 2;
   invalid_value.pagenum = -1, invalid_value.recnum = -1;
 
-  values = malloc(key_count);
-  keys = malloc(key_count);
+  values = malloc(key_count * sizeof(RECID));
+  keys = malloc(key_count * sizeof(int));
 
   for (i = 0; i < key_count; ++i) {
     keys[i] = i + 500;
@@ -520,7 +520,7 @@ void test_insert_merge() {
   assert(AM_OpenIndex("insert", 0) == am_fd);
   
   for (i = 0; i < key_count; ++i) {
-    assert(AM_InsertEntry(am_fd, (char*)&keys[i], values[i]) == AME_OK);
+    assert(AM_InsertEntry(am_fd, (char*)(keys + i), values[i]) == AME_OK);
   }
 
 
