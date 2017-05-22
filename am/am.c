@@ -190,8 +190,7 @@ int AM_CloseIndex(int am_fd) {
     return AMerrno;
   }
 
-  /* pagenum 0 should always be the root */
-  if (PF_UnpinPage(entry->fd, 0, FALSE) != PFE_OK) {
+  if (PF_UnpinPage(entry->fd, entry->root->pagenum, FALSE) != PFE_OK) {
     AMerrno = AME_FD;
     return AMerrno;
   }

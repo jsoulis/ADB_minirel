@@ -238,7 +238,7 @@ leaf_node *find_leaf(int fd, internal_node *root, const char *key,
     PF_GetThisPage(fd, *pagenum, (char **)&in_node);
 
     /* Don't unpin root */
-    if (prev_pagenum != 0) {
+    if (prev_pagenum != root->pagenum) {
       PF_UnpinPage(fd, prev_pagenum, FALSE);
     }
 
@@ -367,7 +367,7 @@ int find_parent(int fd, internal_node *root, const char *key, internal_node **pa
     }
 
     /* Don't unpin root */
-    if (prev_pagenum != 0) {
+    if (prev_pagenum != root->pagenum) {
       if (PF_UnpinPage(fd, prev_pagenum, FALSE) != PFE_OK) {
         return AME_PF;
       }
@@ -377,7 +377,7 @@ int find_parent(int fd, internal_node *root, const char *key, internal_node **pa
   } while (in_node->type == INTERNAL);
 
   /* Unpin the page we did not to take (but not root)*/
-  if (in_node->pagenum != 0 && PF_UnpinPage(fd, in_node->pagenum, FALSE) != PFE_OK) {
+  if (in_node->pagenum != root->pagenum && PF_UnpinPage(fd, in_node->pagenum, FALSE) != PFE_OK) {
     return AME_PF;
   }
 
