@@ -215,10 +215,11 @@ int initialize_root_node(index_table_entry *entry, char *key) {
 leaf_node *find_leaf(int fd, internal_node *root, const char *key,
                      int *pagenum) {
   int ptr_index;
-  int prev_pagenum;
+  int prev_pagenum = 0;
   leaf_node *le_node;
   internal_node *in_node = root;
   do {
+    in_node->pairs = (char *)&in_node->pairs + sizeof(char *);
 
     /* If no key, go to first child */
     if (key) {
@@ -232,7 +233,6 @@ leaf_node *find_leaf(int fd, internal_node *root, const char *key,
                                          ptr_index);
 
     PF_GetThisPage(fd, *pagenum, (char **)&in_node);
-    in_node->pairs = (char *)&in_node->pairs + sizeof(char *);
 
     /* Don't unpin root */
     if (prev_pagenum != 0) {

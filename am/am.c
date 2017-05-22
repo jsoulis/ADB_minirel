@@ -354,9 +354,7 @@ RECID AM_FindNextEntry(int scan_id) {
   if (!scan_entry->leaf) {
     scan_entry->leaf = find_leaf(index_entry->fd, index_entry->root,
                                  scan_entry->key, &scan_entry->leaf_pagenum);
-    /* If it's a NE operation, just go from the start and skip the NE elements
-     */
-    if (scan_entry->key && scan_entry->operation != NE_OP) {
+    if (scan_entry->key) {
       /* ptr index = key index and it's now GE to to key */
       scan_entry->key_index = find_ptr_index_leaf(
           scan_entry->key, scan_entry->leaf->key_length,
@@ -364,8 +362,12 @@ RECID AM_FindNextEntry(int scan_id) {
           scan_entry->leaf->valid_entries);
       /* We want to point to the index before */
       switch (scan_entry->operation) {
-      case GE_OP:
       case LE_OP:
+      case LT_OP:
+      case NE_OP:
+        scan_entry->key_index = -1;
+        break;
+      case GE_OP:
       case EQ_OP:
         --scan_entry->key_index;
         break;
@@ -396,7 +398,7 @@ RECID AM_FindNextEntry(int scan_id) {
     case LE_OP:
     case GE_OP:
       if (is_operation_true(
-              scan_entry->key, key_address, scan_entry->leaf->key_length,
+              key_address, scan_entry->key, scan_entry->leaf->key_length,
               scan_entry->leaf->key_type, scan_entry->operation)) {
         ptr_address = get_ptr_address_leaf(scan_entry->leaf->pairs,
                                            scan_entry->leaf->key_length,
@@ -408,18 +410,23 @@ RECID AM_FindNextEntry(int scan_id) {
       break;
     case NE_OP:
       if (is_operation_true(
-              scan_entry->key, key_address, scan_entry->leaf->key_length,
+              key_address, scan_entry->key, scan_entry->leaf->key_length,
               scan_entry->leaf->key_type, scan_entry->operation)) {
+
+        ptr_address = get_ptr_address_leaf(scan_entry->leaf->pairs,
+                                           scan_entry->leaf->key_length,
+                                           scan_entry->key_index);
+      } else {
         /* if NE we want to skip, update index */
         if ((err = update_scan_entry_key_index(scan_entry, index_entry)) !=
             AME_OK) {
           AMerrno = err;
           ptr_address = &invalid_rec;
-        } else {
-          ptr_address = get_ptr_address_leaf(scan_entry->leaf->pairs,
-                                             scan_entry->leaf->key_length,
-                                             scan_entry->key_index);
         }
+
+        ptr_address = get_ptr_address_leaf(scan_entry->leaf->pairs,
+                                           scan_entry->leaf->key_length,
+                                           scan_entry->key_index);
       }
     }
   }
