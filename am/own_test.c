@@ -176,6 +176,47 @@ void test_find_ptr_index_internal()
   assert(*get_ptr_address_internal(pairs, key_length, index) == 8);
 }
 
+void test_find_ptr_index_leaf() 
+{
+  int keys[] = {1, 5, 11, 12};
+  uint8_t key_length = sizeof(int);
+  int key_count = 3;
+  int i;
+  RECID values[3];
+  RECID value;
+  char *pairs;
+  values[0].pagenum = 1, values[0].recnum = 2;
+  values[1].pagenum = 3, values[1].recnum = 4;
+  values[2].pagenum = 5, values[2].recnum = 6;
+
+  pairs = malloc((sizeof(RECID) + key_length) * key_count);
+  for (i = 0; i < key_count; ++i) {
+    memcpy(pairs + (key_length + sizeof(RECID)) * i, &keys[i], key_length);
+    memcpy(pairs + key_length + (key_length + sizeof(RECID)) * i, &values[i], sizeof(RECID));
+  }
+
+  i = find_ptr_index_leaf((char*)&keys[0], key_length, 'i', pairs, key_count);
+  assert(i == 0);
+  value = *get_ptr_address_leaf(pairs, key_length, i);
+  assert(value.recnum == values[i].recnum && value.pagenum == values[i].pagenum);
+
+  i = find_ptr_index_leaf((char*)&keys[1], key_length, 'i', pairs, key_count);
+  assert(i == 1);
+  value = *get_ptr_address_leaf(pairs, key_length, i);
+  assert(value.recnum == values[i].recnum && value.pagenum == values[i].pagenum);
+
+  i = find_ptr_index_leaf((char*)&keys[2], key_length, 'i', pairs, key_count);
+  assert(i == 2);
+  value = *get_ptr_address_leaf(pairs, key_length, i);
+  assert(value.recnum == values[i].recnum && value.pagenum == values[i].pagenum);
+
+  /* Point outside of the max index when it's greater */
+  i = find_ptr_index_leaf((char*)&keys[3], key_length, 'i', pairs, key_count);
+  assert(i == 3);
+
+  free(pairs);
+}
+
 void test_open_close_scan() {
   int key = 1;
   int i = 0;
@@ -331,6 +372,7 @@ int main()
   test_max_node_count();
   test_operation();
   test_find_ptr_index_internal();
+  test_find_ptr_index_leaf();
 
   /* AM functions */
   AM_Init();

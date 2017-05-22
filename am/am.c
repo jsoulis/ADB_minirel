@@ -314,6 +314,12 @@ int AM_InsertEntry(int am_fd, char *key, RECID value) {
   ptr_index = find_ptr_index_leaf(key, le_node->key_length, le_node->key_type,
                                   le_node->pairs, le_node->valid_entries);
 
+
+  /* Inserting in the middle of a leaf */
+  if (ptr_index < le_node->valid_entries) {
+
+  }
+
   *get_ptr_address_leaf(le_node->pairs, le_node->key_length, ptr_index) = value;
   memcpy(get_key_address_leaf(le_node->pairs, le_node->key_length, ptr_index),
          key, le_node->key_length);
