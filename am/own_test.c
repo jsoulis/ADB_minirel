@@ -744,6 +744,7 @@ void test_insert_merge_recursive() {
   assert(AM_OpenIndex("insert", 0) == am_fd);
   
   for (i = 0; i < key_count; ++i) {
+    printf("%i\n", i);
     assert(AM_InsertEntry(am_fd, (char*)(keys + i), values[i]) == AME_OK);
   }
 
@@ -793,7 +794,7 @@ int main() {
   test_insert_merge();
   test_insert_merge_unorder();
   test_insert_merge_reverse_order();
-  /* test_insert_merge_recursive(); */
+  test_insert_merge_recursive();
 
   printf("Passed all tests\n");
   return 0;
