@@ -396,11 +396,17 @@ RECID AM_FindNextEntry(int scan_id) {
     return invalid_rec;
   }
 
+  /* if the new leaf has no entries, return invalid rec */
+  if (!scan_entry->leaf->valid_entries) {
+    AMerrno = AME_EOF;
+    return invalid_rec;
+  }
+
   /* Just scan through */
   if (!scan_entry->key) {
-    ptr_address =
-        get_ptr_address_leaf(scan_entry->leaf->pairs, scan_entry->leaf->key_length,
-                         scan_entry->key_index);
+    ptr_address = get_ptr_address_leaf(scan_entry->leaf->pairs,
+                                       scan_entry->leaf->key_length,
+                                       scan_entry->key_index);
   } else {
     key_address = get_key_address_leaf(scan_entry->leaf->pairs,
                                        scan_entry->leaf->key_length,
@@ -450,6 +456,10 @@ RECID AM_FindNextEntry(int scan_id) {
 int AM_DeleteEntry(int am_fd, char *key, RECID value) {
   leaf_node *le_node;
   index_table_entry *entry;
+  char *key_address;
+  RECID ptr_value;
+  int index;
+  int ret_val = AME_RECNOTFOUND;
 
   if (am_fd < 0 || am_fd >= AM_ITAB_SIZE || !index_table[am_fd].in_use) {
     AMerrno = AME_FD;
@@ -463,10 +473,38 @@ int AM_DeleteEntry(int am_fd, char *key, RECID value) {
   }
 
   le_node = find_leaf(entry->fd, entry->root, key);
+  index = find_ptr_index_leaf(key, le_node->key_length, le_node->key_type,
+                              le_node->pairs, le_node->valid_entries);
 
-  (void)le_node;
-  (void)am_fd;
-  (void)key;
-  (void)value;
-  return AME_UNIX;
+  /* While the keys are equal, look if the value is also equal */
+  while (is_operation_true(
+      get_key_address_leaf(le_node->pairs, le_node->key_length, index), key,
+      le_node->key_length, le_node->key_type, EQ_OP)) {
+    ptr_value =
+        *get_ptr_address_leaf(le_node->pairs, le_node->key_length, index);
+
+    if (ptr_value.pagenum == value.pagenum &&
+        ptr_value.recnum == value.recnum) {
+      key_address =
+          get_key_address_leaf(le_node->pairs, le_node->key_length, index);
+      memmove(key_address,
+              key_address + le_node->key_length + LEAF_NODE_PTR_SIZE,
+              (le_node->valid_entries - index) *
+                  (le_node->key_length + LEAF_NODE_PTR_SIZE));
+      --le_node->valid_entries;
+
+      ret_val = AME_OK;
+      break;
+    }
+  }
+
+  /* It's only dirty if we managed to find the record */
+  if (PF_UnpinPage(entry->fd, le_node->pagenum, ret_val == AME_OK) != PFE_OK) {
+    ret_val = AME_PF;
+  }
+
+  if (ret_val != AME_OK) {
+    AMerrno = ret_val;
+  }
+  return ret_val;
 }
