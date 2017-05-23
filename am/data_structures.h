@@ -59,8 +59,6 @@ typedef struct
   int operation;
   char *key;
   int key_index;
-  /* Unpin after done */
-  int leaf_pagenum;
   leaf_node *leaf;
 } scan_table_entry;
 

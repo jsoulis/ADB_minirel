@@ -215,10 +215,9 @@ int initialize_root_node(index_table_entry *entry, char *key) {
 }
 
 /* Will unpin internal pages fetched inside, but not the one given */
-leaf_node *find_leaf(int fd, internal_node *root, const char *key,
-                     int *pagenum) {
+leaf_node *find_leaf(int fd, internal_node *root, const char *key) {
   int ptr_index;
-  int prev_pagenum = 0;
+  int pagenum, prev_pagenum = 0;
   leaf_node *le_node;
   internal_node *in_node = root;
   do {
@@ -232,17 +231,17 @@ leaf_node *find_leaf(int fd, internal_node *root, const char *key,
     } else {
       ptr_index = 0;
     }
-    *pagenum = *get_ptr_address_internal(in_node->pairs, in_node->key_length,
+    pagenum = *get_ptr_address_internal(in_node->pairs, in_node->key_length,
                                          ptr_index);
 
-    PF_GetThisPage(fd, *pagenum, (char **)&in_node);
+    PF_GetThisPage(fd, pagenum, (char **)&in_node);
 
     /* Don't unpin root */
     if (prev_pagenum != root->pagenum) {
       PF_UnpinPage(fd, prev_pagenum, FALSE);
     }
 
-    prev_pagenum = *pagenum;
+    prev_pagenum = pagenum;
   } while (in_node->type == INTERNAL);
 
   le_node = (leaf_node *)in_node;
@@ -253,7 +252,7 @@ leaf_node *find_leaf(int fd, internal_node *root, const char *key,
 
 int update_scan_entry_key_index(scan_table_entry *scan_entry,
                                 index_table_entry *index_entry) {
-  int prev_pagenum;
+  int pagenum, prev_pagenum;
   if (scan_entry->key_index + 1 >= scan_entry->leaf->valid_entries) {
     /* fetch new leaf */
     if (scan_entry->leaf->next_leaf == -1) {
@@ -261,9 +260,9 @@ int update_scan_entry_key_index(scan_table_entry *scan_entry,
     }
 
     scan_entry->key_index = 0;
-    prev_pagenum = scan_entry->leaf_pagenum;
-    scan_entry->leaf_pagenum = scan_entry->leaf->next_leaf;
-    if (PF_GetThisPage(index_entry->fd, scan_entry->leaf_pagenum,
+    prev_pagenum = scan_entry->leaf->pagenum;
+    pagenum = scan_entry->leaf->next_leaf;
+    if (PF_GetThisPage(index_entry->fd, pagenum,
                        (char **)&scan_entry->leaf) != PFE_OK) {
       return AME_PF;
     }
