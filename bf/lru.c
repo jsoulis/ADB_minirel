@@ -10,6 +10,7 @@ void LRU_Push(BFpage **head, BFpage *new_node) {
     return;
   }
 
+  new_node->prevpage = 0;
   new_node->nextpage = *head;
   if (*head) {
     (*head)->prevpage = new_node;
