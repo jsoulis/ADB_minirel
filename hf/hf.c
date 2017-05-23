@@ -784,4 +784,3 @@ bool_t HF_ValidRecId(int HFfd, RECID recid) {
 void HF_PrintError (char *errString) {
   printf("%s\n", errString );
 }
->>>>>>> hflayer
