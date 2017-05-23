@@ -10,6 +10,7 @@ void LRU_Push(BFpage **head, BFpage *new_node) {
     return;
   }
 
+  new_node->prevpage = 0;
   new_node->nextpage = *head;
   if (*head) {
     (*head)->prevpage = new_node;
@@ -46,7 +47,7 @@ int LRU_ClearLast(BFpage *lru_head, BFhash_entry **hash_table,
   }
 
   /* We need to find a page that's not pinned */
-  while (bpage->count > 0 && bpage) {
+  while (bpage && bpage->count > 0) {
     bpage = bpage->prevpage;
   }
 

@@ -1,8 +1,8 @@
 # Makefile for AM layer
-LIB	= am
+LIB	= am1
 INCDIR	= ${MINIREL_HOME}/h
 INCS	= 
-SRCS	= 
+SRCS	= am1.c
 TESTS	= amtest.c
 OBJS	= ${SRCS:.c=.o}
 LIBS	= lib${LIB}.a ../pf/libpf.a ../hf/libhf.a ../bf/libbf.a
@@ -10,7 +10,7 @@ LIBS	= lib${LIB}.a ../pf/libpf.a ../hf/libhf.a ../bf/libbf.a
 #############################################################################
 # This macro definition can be overwritten by command-line definitions.
 CC	= gcc
-CFLAGS	= -g -ansi -pedantic
+CFLAGS	= -g -ansi -pedantic 
 #CFLAGS	= -O -ansi -pedantic
 #############################################################################
 
