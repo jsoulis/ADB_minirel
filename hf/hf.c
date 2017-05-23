@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "minirel.h"
 
@@ -78,14 +79,15 @@ int HF_CreateFile(char *filename, int recSize) {
     return HFE_PF;
   }
 
-  if(fd = PF_OpenFile(filename) < 0) {
+  fd = PF_OpenFile(filename);
+  if(fd < 0) {
     return HFE_PF;
   }
-
   if (PF_AllocPage(fd, &pagenum, &pagebuf) != 0)
   {
     return HFE_PF;
   }
+
 
   /*calculate the max number of records for data page*/
   /*may need to be recSize + 2 in order to account for '/0'*/
@@ -145,7 +147,7 @@ int HF_OpenFile(char *filename) {
    return HFE_FTABFULL;
  }
 
- if (fd = PF_OpenFile(filename) != 0) {
+ if ((fd = PF_OpenFile(filename)) != 0) {
    return HFE_PF;
  }
 
@@ -776,4 +778,8 @@ bool_t HF_ValidRecId(int HFfd, RECID recid) {
   else {
     return FALSE;
   }
+}
+
+void HF_PrintError (char *errString) {
+  printf("%s\n", errString );
 }

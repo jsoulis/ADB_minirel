@@ -5,7 +5,7 @@ INCS	=
 SRCS	= hf.c
 TESTS	= hftest.c
 OBJS	= ${SRCS:.c=.o}
-LIBS	= lib${LIB}.a ../pf/libpf.a ../bf/libbf.a
+LIBS	= lib${LIB}.a ../pf/libpf.a ../bf/libbf.a -lm
 
 #############################################################################
 # This macro definition can be overwritten by command-line definitions.
