@@ -232,7 +232,7 @@ leaf_node *find_leaf(int fd, internal_node *root, const char *key) {
       ptr_index = 0;
     }
     pagenum = *get_ptr_address_internal(in_node->pairs, in_node->key_length,
-                                         ptr_index);
+                                        ptr_index);
 
     PF_GetThisPage(fd, pagenum, (char **)&in_node);
 
@@ -262,8 +262,8 @@ int update_scan_entry_key_index(scan_table_entry *scan_entry,
     scan_entry->key_index = 0;
     prev_pagenum = scan_entry->leaf->pagenum;
     pagenum = scan_entry->leaf->next_leaf;
-    if (PF_GetThisPage(index_entry->fd, pagenum,
-                       (char **)&scan_entry->leaf) != PFE_OK) {
+    if (PF_GetThisPage(index_entry->fd, pagenum, (char **)&scan_entry->leaf) !=
+        PFE_OK) {
       return AME_PF;
     }
     scan_entry->leaf->pairs =
@@ -287,7 +287,8 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
   char *mid_key = get_key_address_leaf(le_node->pairs, le_node->key_length,
                                        max_node_count(le_node->key_length) / 2);
 
-  if ((err = find_parent(entry->fd, le_node->pagenum, entry->root, key, &parent) != AME_OK)) {
+  if ((err = find_parent(entry->fd, le_node->pagenum, entry->root, key,
+                         &parent) != AME_OK)) {
     return err;
   }
 
@@ -302,15 +303,15 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
                                   parent->pairs, parent->valid_entries);
   /* shift entries */
   if (index < parent->valid_entries) {
-    memmove(parent->pairs +
+    memmove(parent->pairs + INTERNAL_NODE_PTR_SIZE +
                 (INTERNAL_NODE_PTR_SIZE + parent->key_length) * (index + 1),
-            parent->pairs +
+            parent->pairs + INTERNAL_NODE_PTR_SIZE +
                 (INTERNAL_NODE_PTR_SIZE + parent->key_length) * index,
             (parent->key_length + INTERNAL_NODE_PTR_SIZE) *
                 (parent->valid_entries - index));
   }
 
-  if (PF_AllocPage(entry->fd, &pagenum, (char**)&le_node_new) != PFE_OK) {
+  if (PF_AllocPage(entry->fd, &pagenum, (char **)&le_node_new) != PFE_OK) {
     return AME_PF;
   }
 
@@ -323,7 +324,7 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
   le_node_new->prev_leaf = le_node->pagenum;
   le_node->next_leaf = le_node_new->pagenum;
 
-  le_node_new->pairs = (char*)&le_node_new->pairs + sizeof(le_node_new->pairs);
+  le_node_new->pairs = (char *)&le_node_new->pairs + sizeof(le_node_new->pairs);
 
   memcpy(le_node_new->pairs,
          le_node->pairs +
@@ -332,14 +333,18 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
          (le_node->key_length + LEAF_NODE_PTR_SIZE) *
              ceil(((float)max_node_count(le_node->key_length) / 2)));
   le_node->valid_entries = max_node_count(le_node->key_length) / 2;
-  le_node_new->valid_entries = ceil(((float)max_node_count(le_node->key_length) / 2));
+  le_node_new->valid_entries =
+      ceil(((float)max_node_count(le_node->key_length) / 2));
 
   ++parent->valid_entries;
-  *get_ptr_address_internal(parent->pairs, parent->key_length, index + 1) = le_node_new->pagenum;
-  memcpy(get_key_address_internal(parent->pairs, parent->key_length, index), mid_key, parent->key_length);
+  *get_ptr_address_internal(parent->pairs, parent->key_length, index + 1) =
+      le_node_new->pagenum;
+  memcpy(get_key_address_internal(parent->pairs, parent->key_length, index),
+         mid_key, parent->key_length);
 
   if (PF_UnpinPage(entry->fd, le_node_new->pagenum, TRUE) != PFE_OK ||
-      (parent != entry->root && PF_UnpinPage(entry->fd, parent->pagenum, TRUE))) {
+      (parent != entry->root &&
+       PF_UnpinPage(entry->fd, parent->pagenum, TRUE))) {
     return AME_FD;
   }
   return AME_OK;
@@ -349,7 +354,8 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
    Go from following the key
    When the next node is a leaf, we found the parent
 */
-int find_parent(int fd, int target_pagenum, internal_node *root, const char *key, internal_node **parent) {
+int find_parent(int fd, int target_pagenum, internal_node *root,
+                const char *key, internal_node **parent) {
   int ptr_index;
   int pagenum;
   internal_node *in_node = root, *prev_node = 0;
@@ -390,16 +396,18 @@ int find_parent(int fd, int target_pagenum, internal_node *root, const char *key
   return AME_OK;
 }
 
-int merge_recursive(index_table_entry *entry, char *key, internal_node *in_node) {
+int merge_recursive(index_table_entry *entry, char *key,
+                    internal_node *in_node) {
   int err, pagenum, index;
   internal_node *parent, *in_node_new;
   char *mid_key;
+  char *key_address;
 
   mid_key = get_key_address_internal(in_node->pairs, in_node->key_length,
-                                       max_node_count(in_node->key_length) / 2);
+                                     max_node_count(in_node->key_length) / 2);
   /* We have to create a new root */
   if (in_node == entry->root) {
-    if (PF_AllocPage(entry->fd, &pagenum, (char**)&entry->root) != PFE_OK) {
+    if (PF_AllocPage(entry->fd, &pagenum, (char **)&entry->root) != PFE_OK) {
       return AME_PF;
     }
 
@@ -408,9 +416,12 @@ int merge_recursive(index_table_entry *entry, char *key, internal_node *in_node)
     entry->root->valid_entries = 1;
     entry->root->key_type = in_node->key_type;
     entry->root->key_length = in_node->key_length;
-    entry->root->pairs = (char*)&entry->root->pairs + sizeof(entry->root->pairs);
+    entry->root->pairs =
+        (char *)&entry->root->pairs + sizeof(entry->root->pairs);
 
-    if (PF_AllocPage(entry->fd, &pagenum, (char**)&in_node_new) != PFE_OK) {
+    parent = entry->root;
+
+    if (PF_AllocPage(entry->fd, &pagenum, (char **)&in_node_new) != PFE_OK) {
       return AME_PF;
     }
 
@@ -419,19 +430,24 @@ int merge_recursive(index_table_entry *entry, char *key, internal_node *in_node)
     in_node_new->valid_entries = 0;
     in_node_new->key_type = in_node->key_type;
     in_node_new->key_length = in_node->key_length;
-    in_node_new->pairs = (char*)&in_node_new->pairs + sizeof(in_node_new->pairs);
+    in_node_new->pairs =
+        (char *)&in_node_new->pairs + sizeof(in_node_new->pairs);
 
-    memcpy(get_key_address_internal(entry->root->pairs, entry->root->key_length, 0),
+    memcpy(get_key_address_internal(entry->root->pairs, entry->root->key_length,
+                                    0),
            mid_key, entry->root->key_length);
 
-    *get_ptr_address_internal(entry->root->pairs, entry->root->key_length, 0) = in_node->pagenum;
-    *get_ptr_address_internal(entry->root->pairs, entry->root->key_length, 1) = in_node_new->pagenum;
+    *get_ptr_address_internal(entry->root->pairs, entry->root->key_length, 0) =
+        in_node->pagenum;
+    *get_ptr_address_internal(entry->root->pairs, entry->root->key_length, 1) =
+        in_node_new->pagenum;
 
-    memcpy(in_node_new->pairs,
+    memcpy(in_node_new->pairs + INTERNAL_NODE_PTR_SIZE,
            in_node->pairs + INTERNAL_NODE_PTR_SIZE +
                (INTERNAL_NODE_PTR_SIZE + in_node->key_length) *
                    (max_node_count(in_node->key_length) / 2),
-           ceil(((float)max_node_count(in_node->key_length) / 2)));
+           (INTERNAL_NODE_PTR_SIZE + in_node->key_length) *
+               ceil(((float)max_node_count(in_node->key_length) / 2)));
 
     in_node->valid_entries = max_node_count(in_node->key_length) / 2;
     in_node_new->valid_entries =
@@ -459,9 +475,9 @@ int merge_recursive(index_table_entry *entry, char *key, internal_node *in_node)
     /* Make space for this nodes ptr and key */
 
     if (index < parent->valid_entries) {
-      memmove(parent->pairs +
+      memmove(parent->pairs + INTERNAL_NODE_PTR_SIZE +
                   (INTERNAL_NODE_PTR_SIZE + parent->key_length) * (index + 1),
-              parent->pairs +
+              parent->pairs + INTERNAL_NODE_PTR_SIZE +
                   (INTERNAL_NODE_PTR_SIZE + parent->key_length) * index,
               (parent->key_length + INTERNAL_NODE_PTR_SIZE) *
                   (parent->valid_entries - index));
@@ -478,11 +494,12 @@ int merge_recursive(index_table_entry *entry, char *key, internal_node *in_node)
     in_node_new->pairs =
         (char *)&in_node_new->pairs + sizeof(in_node_new->pairs);
 
-    memcpy(in_node_new->pairs,
-           in_node->pairs +
+    memcpy(in_node_new->pairs + INTERNAL_NODE_PTR_SIZE,
+           in_node->pairs + INTERNAL_NODE_PTR_SIZE +
                (INTERNAL_NODE_PTR_SIZE + in_node->key_length) *
                    (max_node_count(in_node->key_length) / 2),
-           ceil(((float)max_node_count(in_node->key_length) / 2)));
+           (INTERNAL_NODE_PTR_SIZE + in_node->key_length) *
+               ceil(((float)max_node_count(in_node->key_length) / 2)));
 
     in_node->valid_entries = max_node_count(in_node->key_length) / 2;
     in_node_new->valid_entries =
@@ -491,7 +508,9 @@ int merge_recursive(index_table_entry *entry, char *key, internal_node *in_node)
     ++parent->valid_entries;
     *get_ptr_address_internal(parent->pairs, parent->key_length, index + 1) =
         in_node_new->pagenum;
-    memcpy(get_key_address_internal(parent->pairs, parent->key_length, index),
+    key_address = get_key_address_internal(parent->pairs, parent->key_length, index);
+
+    memcpy(key_address,
            mid_key, parent->key_length);
 
     if (PF_UnpinPage(entry->fd, in_node_new->pagenum, TRUE) ||
