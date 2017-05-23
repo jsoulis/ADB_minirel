@@ -297,6 +297,21 @@ void test_find_next_entry_invalid_id() {
   assert(value.recnum == -1 && value.pagenum == -1 && AMerrno == AME_INVALIDSCANDESC);
 }
 
+void test_insert_simple() {
+  int am_fd = 0;
+  int key = 1;
+  RECID value;
+  value.pagenum = 10, value.recnum = 11;
+
+  assert(AM_CreateIndex("insert", 0, 'i', 4, FALSE) == AME_OK);
+  assert(AM_OpenIndex("insert", 0) == am_fd);
+
+  assert(AM_InsertEntry(am_fd, (char *)&key, value) == AME_OK);
+
+  assert(AM_CloseIndex(am_fd) == AME_OK);
+  assert(AM_DestroyIndex("insert", 0) == AME_OK);
+}
+
 void test_insert_scan_simple() {
   int am_fd = 0;
   int scan_id = 0;
@@ -365,6 +380,52 @@ void test_insert_scan_reorder() {
          next_entry.recnum == invalid_value.recnum);
 
   assert(AM_CloseIndexScan(scan_id) == AME_OK);
+  assert(AM_CloseIndex(am_fd) == AME_OK);
+  assert(AM_DestroyIndex("insert", 0) == AME_OK);
+}
+
+void test_delete() {
+  int am_fd = 0;
+  int scan_id = 0;
+  int keys[] = {1, 2, 3};
+  int i;
+  RECID values[3], invalid_value, next_entry;
+  
+  for (i = 0; i < 3; ++i) {
+    values[i].pagenum = i + 100, values[i].recnum = i + 200;
+  }
+  invalid_value.pagenum = -1, invalid_value.recnum = -1;
+
+  assert(AM_CreateIndex("insert", 0, 'i', 4, FALSE) == AME_OK);
+  assert(AM_OpenIndex("insert", 0) == am_fd);
+
+  for (i = 0; i < 3; ++i) {
+    assert(AM_InsertEntry(am_fd, (char *)&keys[i], values[i]) == AME_OK);
+  }
+
+  assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
+
+  for (i = 0; i < 3; ++i) {
+    next_entry = AM_FindNextEntry(scan_id);
+    assert(next_entry.pagenum == values[i].pagenum && next_entry.recnum == values[i].recnum);
+  }
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == invalid_value.pagenum &&
+         next_entry.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+  assert(AM_DeleteEntry(am_fd, (char*)&keys[1], values[1]) == AME_OK);
+
+  assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
+  for (i = 0; i < 3; ++i) {
+    if (i == 1) continue;
+
+    next_entry = AM_FindNextEntry(scan_id);
+    assert(next_entry.pagenum == values[i].pagenum && next_entry.recnum == values[i].recnum);
+  }
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
   assert(AM_CloseIndex(am_fd) == AME_OK);
   assert(AM_DestroyIndex("insert", 0) == AME_OK);
 }
@@ -632,6 +693,52 @@ void test_insert_merge_reverse_order() {
   assert(AM_DestroyIndex("insert", 0) == AME_OK);
 }
 
+void test_insert_merge_recursive() {
+  int i;
+  RECID *values;
+  int *keys;
+  RECID value, invalid_value;
+  int key_size = 4;
+
+
+  int am_fd = 0, scan_id = 0;
+  int key_count = max_node_count(key_size) * max_node_count(key_size);
+  invalid_value.pagenum = -1, invalid_value.recnum = -1;
+
+  values = malloc(key_count * sizeof(RECID));
+  keys = malloc(key_count * sizeof(int));
+
+  for (i = 0; i < key_count; ++i) {
+    keys[i] = i;
+    values[i].pagenum = 1000 + i, values[i].recnum = 50000 + i;
+  }
+
+  assert(AM_CreateIndex("insert", 0, 'i', 4, FALSE) == AME_OK);
+  assert(AM_OpenIndex("insert", 0) == am_fd);
+  
+  for (i = 0; i < key_count; ++i) {
+    assert(AM_InsertEntry(am_fd, (char*)(keys + i), values[i]) == AME_OK);
+  }
+
+  assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
+  for (i = 0; i < key_count; ++i) {
+    value = AM_FindNextEntry(scan_id);
+    assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
+  }
+  
+  value = AM_FindNextEntry(scan_id);
+  assert(value.pagenum == invalid_value.pagenum &&
+         value.recnum == invalid_value.recnum);
+
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+  assert(AM_CloseIndex(am_fd) == AME_OK);
+  assert(AM_DestroyIndex("insert", 0) == AME_OK);
+
+  free(values);
+  free(keys);
+}
+
 int main() {
   test_filename_size();
   test_filename_with_index();
@@ -648,13 +755,18 @@ int main() {
 
   test_insert_invalid_fd();
   test_find_next_entry_invalid_id();
+
+  test_insert_simple();
   test_insert_scan_simple();
   test_insert_scan_reorder();
+
+  /*test_delete();*/
 
   test_scan_operations();
   test_insert_merge();
   test_insert_merge_unorder();
   test_insert_merge_reverse_order();
+  /*test_insert_merge_recursive();*/
 
   printf("Passed all tests\n");
   return 0;

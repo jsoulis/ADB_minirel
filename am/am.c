@@ -322,6 +322,10 @@ int AM_InsertEntry(int am_fd, char *key, RECID value) {
       AMerrno = err;
       return AMerrno;
     }
+    if (PF_UnpinPage(entry->fd, le_node->pagenum, TRUE) != PFE_OK ) {
+      AMerrno = AME_PF;
+      return AMerrno;
+    }
     return AM_InsertEntry(am_fd, key, value);
   }
 
@@ -441,4 +445,11 @@ RECID AM_FindNextEntry(int scan_id) {
     }
   }
   return *ptr_address;
+}
+
+int AM_DeleteEntry(int am_fd, char *key, RECID value) {
+  (void)am_fd;
+  (void)key;
+  (void)value;
+  return AME_UNIX;
 }
