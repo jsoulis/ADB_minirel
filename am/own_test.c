@@ -733,14 +733,14 @@ void test_insert_merge_recursive() {
   invalid_value.pagenum = -1, invalid_value.recnum = -1;
 
   values = malloc(key_count * sizeof(RECID));
-  keys = malloc(key_count * sizeof(int));
+  keys = malloc(key_count * key_size);
 
   for (i = 0; i < key_count; ++i) {
     keys[i] = i;
     values[i].pagenum = 1000 + i, values[i].recnum = 50000 + i;
   }
 
-  assert(AM_CreateIndex("insert", 0, 'i', 4, FALSE) == AME_OK);
+  assert(AM_CreateIndex("insert", 0, 'i', key_size, FALSE) == AME_OK);
   assert(AM_OpenIndex("insert", 0) == am_fd);
   
   for (i = 0; i < key_count; ++i) {
