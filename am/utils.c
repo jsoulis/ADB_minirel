@@ -281,7 +281,7 @@ int update_scan_entry_key_index(scan_table_entry *scan_entry,
 
 int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
   internal_node *parent;
-  int index, pagenum, err;
+  int index, pagenum, err, leaf_key_index_add;
   leaf_node *le_node_new;
   /* Find middle key */
   char *mid_key = get_key_address_leaf(le_node->pairs, le_node->key_length,
@@ -335,15 +335,21 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
 
   le_node_new->pairs = (char *)&le_node_new->pairs + sizeof(le_node_new->pairs);
 
+  /* Make sure duplicates stay together */
+  leaf_key_index_add = 0;
+  while (is_operation_true(mid_key, (mid_key + (le_node->key_length + LEAF_NODE_PTR_SIZE) * (leaf_key_index_add + 1)), le_node->key_length, le_node->key_type, EQ_OP)) {
+    ++leaf_key_index_add;
+  }
+
   memcpy(le_node_new->pairs,
          le_node->pairs +
              (le_node->key_length + LEAF_NODE_PTR_SIZE) *
-                 (max_node_count(le_node->key_length) / 2),
+                 (max_node_count(le_node->key_length) / 2 + leaf_key_index_add),
          (le_node->key_length + LEAF_NODE_PTR_SIZE) *
-             ceil(((float)max_node_count(le_node->key_length) / 2)));
-  le_node->valid_entries = max_node_count(le_node->key_length) / 2;
+             (ceil(((float)max_node_count(le_node->key_length) / 2)) - leaf_key_index_add));
+  le_node->valid_entries = max_node_count(le_node->key_length) / 2 + leaf_key_index_add;
   le_node_new->valid_entries =
-      ceil(((float)max_node_count(le_node->key_length) / 2));
+      ceil(((float)max_node_count(le_node->key_length) / 2)) - leaf_key_index_add;
 
   ++parent->valid_entries;
   *get_ptr_address_internal(parent->pairs, parent->key_length, index + 1) =
