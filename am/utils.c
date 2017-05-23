@@ -285,7 +285,7 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
   leaf_node *le_node_new;
   /* Find middle key */
   char *mid_key = get_key_address_leaf(le_node->pairs, le_node->key_length,
-                                       max_node_count(le_node->key_length) / 2);
+                                       max_node_count(le_node->key_length) / 2 - 1);
 
   if ((err = find_parent(entry->fd, le_node->pagenum, entry->root, key,
                          &parent) != AME_OK)) {
@@ -295,6 +295,15 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
   if (parent->valid_entries >= max_node_count(parent->key_length)) {
     if ((err = merge_recursive(entry, key, parent)) != AME_OK) {
       PF_UnpinPage(entry->fd, parent->pagenum, FALSE);
+      return err;
+    }
+
+    /* We'll probably have a new parent after a merge */
+    if (PF_UnpinPage(entry->fd, parent->pagenum, TRUE) != PFE_OK) {
+      return AME_FD;
+    }
+    if ((err = find_parent(entry->fd, le_node->pagenum, entry->root, key,
+                           &parent) != AME_OK)) {
       return err;
     }
   }
@@ -402,9 +411,10 @@ int merge_recursive(index_table_entry *entry, char *key,
   internal_node *parent, *in_node_new;
   char *mid_key;
   char *key_address;
+  int *ptr_address;
 
   mid_key = get_key_address_internal(in_node->pairs, in_node->key_length,
-                                     max_node_count(in_node->key_length) / 2);
+                                     max_node_count(in_node->key_length) / 2 - 1);
   /* We have to create a new root */
   if (in_node == entry->root) {
     if (PF_AllocPage(entry->fd, &pagenum, (char **)&entry->root) != PFE_OK) {
@@ -442,16 +452,14 @@ int merge_recursive(index_table_entry *entry, char *key,
     *get_ptr_address_internal(entry->root->pairs, entry->root->key_length, 1) =
         in_node_new->pagenum;
 
-    memcpy(in_node_new->pairs + INTERNAL_NODE_PTR_SIZE,
-           in_node->pairs + INTERNAL_NODE_PTR_SIZE +
-               (INTERNAL_NODE_PTR_SIZE + in_node->key_length) *
-                   (max_node_count(in_node->key_length) / 2),
+    index = max_node_count(in_node->key_length) / 2;
+    ptr_address = get_ptr_address_internal(in_node->pairs, in_node->key_length, index - 1);
+    memcpy(in_node_new->pairs, ptr_address,
            (INTERNAL_NODE_PTR_SIZE + in_node->key_length) *
-               ceil(((float)max_node_count(in_node->key_length) / 2)));
+               (max_node_count(in_node->key_length) - index + 2));
 
-    in_node->valid_entries = max_node_count(in_node->key_length) / 2;
-    in_node_new->valid_entries =
-        ceil(((float)max_node_count(in_node->key_length) / 2));
+    in_node->valid_entries = index;
+    in_node_new->valid_entries = index + 1;
 
     if (PF_UnpinPage(entry->fd, in_node_new->pagenum, TRUE) != PFE_OK) {
       return AME_PF;
@@ -494,16 +502,15 @@ int merge_recursive(index_table_entry *entry, char *key,
     in_node_new->pairs =
         (char *)&in_node_new->pairs + sizeof(in_node_new->pairs);
 
-    memcpy(in_node_new->pairs + INTERNAL_NODE_PTR_SIZE,
-           in_node->pairs + INTERNAL_NODE_PTR_SIZE +
-               (INTERNAL_NODE_PTR_SIZE + in_node->key_length) *
-                   (max_node_count(in_node->key_length) / 2),
-           (INTERNAL_NODE_PTR_SIZE + in_node->key_length) *
-               ceil(((float)max_node_count(in_node->key_length) / 2)));
 
-    in_node->valid_entries = max_node_count(in_node->key_length) / 2;
-    in_node_new->valid_entries =
-        ceil(((float)max_node_count(in_node->key_length) / 2));
+    index = max_node_count(in_node->key_length) / 2;
+    ptr_address = get_ptr_address_internal(in_node->pairs, in_node->key_length, index - 1);
+    memcpy(in_node_new->pairs, ptr_address,
+           (INTERNAL_NODE_PTR_SIZE + in_node->key_length) *
+               (max_node_count(in_node->key_length) - index + 2));
+
+    in_node->valid_entries = index;
+    in_node_new->valid_entries = index + 1;
 
     ++parent->valid_entries;
     *get_ptr_address_internal(parent->pairs, parent->key_length, index + 1) =
