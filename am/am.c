@@ -74,7 +74,7 @@ int AM_CreateIndex(char *filename, int index_no, char attr_type,
   }
 
   root->type = INTERNAL;
-  root->pagenum = 0;
+  root->pagenum = pagenum;
   root->valid_entries = 0;
   root->key_type = attr_type;
   /* max length is 255 */
