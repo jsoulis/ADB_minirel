@@ -793,7 +793,7 @@ int main() {
   test_insert_merge();
   test_insert_merge_unorder();
   test_insert_merge_reverse_order();
-  /*test_insert_merge_recursive();*/
+  /* test_insert_merge_recursive(); */
 
   printf("Passed all tests\n");
   return 0;

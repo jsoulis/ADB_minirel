@@ -34,6 +34,6 @@ leaf_node *find_leaf(int fd, internal_node *root, const char *key);
 int update_scan_entry_key_index(scan_table_entry *scan_entry, index_table_entry *index_entry);
 /* returns error if couldn't merge, AME_OK otherwise */
 int merge(index_table_entry *entry, char *key, leaf_node *le_node);
-int find_parent(int fd, internal_node *root, const char *key, internal_node **parent);
+int find_parent(int fd, int target_pagenum, internal_node *root, const char *key, internal_node **parent);
 
 #endif

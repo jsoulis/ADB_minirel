@@ -287,7 +287,7 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
   char *mid_key = get_key_address_leaf(le_node->pairs, le_node->key_length,
                                        max_node_count(le_node->key_length) / 2);
 
-  if ((err = find_parent(entry->fd, entry->root, key, &parent) != AME_OK)) {
+  if ((err = find_parent(entry->fd, le_node->pagenum, entry->root, key, &parent) != AME_OK)) {
     return err;
   }
 
@@ -342,7 +342,7 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
    Go from following the key
    When the next node is a leaf, we found the parent
 */
-int find_parent(int fd, internal_node *root, const char *key, internal_node **parent) {
+int find_parent(int fd, int target_pagenum, internal_node *root, const char *key, internal_node **parent) {
   int ptr_index;
   int pagenum;
   internal_node *in_node = root, *prev_node = 0;
@@ -370,7 +370,7 @@ int find_parent(int fd, internal_node *root, const char *key, internal_node **pa
     if (PF_GetThisPage(fd, pagenum, (char **)&in_node) != PFE_OK) {
       return AME_PF;
     }
-  } while (in_node->type == INTERNAL);
+  } while (pagenum != target_pagenum);
 
   /* Unpin the page we did not to take (but not root)*/
   if (in_node->pagenum != root->pagenum &&
