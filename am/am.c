@@ -262,7 +262,7 @@ int AM_CloseIndexScan(int scan_id) {
   index_entry = &index_table[scan_entry->am_fd];
 
   if (scan_entry->leaf != NULL &&
-      PF_UnpinPage(index_entry->fd, scan_entry->leaf_pagenum, FALSE) !=
+      PF_UnpinPage(index_entry->fd, scan_entry->leaf->pagenum, FALSE) !=
           PFE_OK) {
     AMerrno = AME_PF;
     return AMerrno;
@@ -294,7 +294,7 @@ Leaf with duplicate keys are trying to split
 int AM_InsertEntry(int am_fd, char *key, RECID value) {
   index_table_entry *entry;
   leaf_node *le_node;
-  int ptr_index, pagenum;
+  int ptr_index;
   int err;
 
   if (am_fd < 0 || am_fd >= AM_ITAB_SIZE || !index_table[am_fd].in_use) {
@@ -311,7 +311,7 @@ int AM_InsertEntry(int am_fd, char *key, RECID value) {
     }
   }
 
-  le_node = find_leaf(entry->fd, entry->root, key, &pagenum);
+  le_node = find_leaf(entry->fd, entry->root, key);
   ptr_index = find_ptr_index_leaf(key, le_node->key_length, le_node->key_type,
                                   le_node->pairs, le_node->valid_entries);
 
@@ -340,7 +340,7 @@ int AM_InsertEntry(int am_fd, char *key, RECID value) {
   memcpy(get_key_address_leaf(le_node->pairs, le_node->key_length, ptr_index),
          key, le_node->key_length);
   ++le_node->valid_entries;
-  if (PF_UnpinPage(entry->fd, pagenum, TRUE) != PFE_OK) {
+  if (PF_UnpinPage(entry->fd, le_node->pagenum, TRUE) != PFE_OK) {
     AMerrno = AME_PF;
     return AMerrno;
   }
@@ -366,8 +366,8 @@ RECID AM_FindNextEntry(int scan_id) {
   index_entry = &index_table[scan_entry->am_fd];
 
   if (!scan_entry->leaf) {
-    scan_entry->leaf = find_leaf(index_entry->fd, index_entry->root,
-                                 scan_entry->key, &scan_entry->leaf_pagenum);
+    scan_entry->leaf =
+        find_leaf(index_entry->fd, index_entry->root, scan_entry->key);
     if (scan_entry->key) {
       /* ptr index = key index and it's now GE to to key */
       scan_entry->key_index = find_ptr_index_leaf(
@@ -448,6 +448,23 @@ RECID AM_FindNextEntry(int scan_id) {
 }
 
 int AM_DeleteEntry(int am_fd, char *key, RECID value) {
+  leaf_node *le_node;
+  index_table_entry *entry;
+
+  if (am_fd < 0 || am_fd >= AM_ITAB_SIZE || !index_table[am_fd].in_use) {
+    AMerrno = AME_FD;
+    return AMerrno;
+  }
+
+  entry = &index_table[am_fd];
+  if (!entry->root) {
+    AMerrno = AME_RECNOTFOUND;
+    return AMerrno;
+  }
+
+  le_node = find_leaf(entry->fd, entry->root, key);
+
+  (void)le_node;
   (void)am_fd;
   (void)key;
   (void)value;
