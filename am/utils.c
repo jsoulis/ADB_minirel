@@ -513,7 +513,10 @@ int merge_recursive(index_table_entry *entry, char *key,
     in_node_new->valid_entries = index + 1;
 
     ++parent->valid_entries;
-    *get_ptr_address_internal(parent->pairs, parent->key_length, index + 1) =
+    index =
+        find_ptr_index_internal(mid_key, parent->key_length, parent->key_type,
+                                parent->pairs, parent->valid_entries);
+    *get_ptr_address_internal(parent->pairs, parent->key_length, index) =
         in_node_new->pagenum;
     key_address = get_key_address_internal(parent->pairs, parent->key_length, index);
 

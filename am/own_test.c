@@ -729,9 +729,7 @@ void test_insert_merge_recursive() {
 
 
   int am_fd = 0, scan_id = 0;
-  /*int key_count = max_node_count(key_size) * max_node_count(key_size);*/
-  /* int key_count = 57291; Amount of keys required to get a recursive merge */
-  int key_count = 85684; /* One less than required for two recursive merges */
+  int key_count = max_node_count(key_size) * max_node_count(key_size);
   invalid_value.pagenum = -1, invalid_value.recnum = -1;
 
   values = malloc(key_count * sizeof(RECID));
@@ -751,7 +749,6 @@ void test_insert_merge_recursive() {
 
   assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
   for (i = 0; i < key_count; ++i) {
-    printf("%i\n", i);
     value = AM_FindNextEntry(scan_id);
     assert(value.pagenum == values[i].pagenum && value.recnum == values[i].recnum);
   }
