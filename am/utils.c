@@ -333,7 +333,7 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
   memcpy(get_key_address_internal(parent->pairs, parent->key_length, index), mid_key, parent->key_length);
 
   if (PF_UnpinPage(entry->fd, le_node_new->pagenum, TRUE) != PFE_OK ||
-      PF_UnpinPage(entry->fd, le_node->pagenum, TRUE) != PFE_OK) {
+      (parent != entry->root && PF_UnpinPage(entry->fd, parent->pagenum, TRUE))) {
     return AME_FD;
   }
   return AME_OK;
@@ -345,9 +345,15 @@ int merge(index_table_entry *entry, char *key, leaf_node *le_node) {
 */
 int find_parent(int fd, internal_node *root, const char *key, internal_node **parent) {
   int ptr_index;
-  int prev_pagenum = 0, pagenum;
-  internal_node *in_node = root, *prev_node;
+  int pagenum;
+  internal_node *in_node = root, *prev_node = 0;
   do {
+    /* Don't unpin root */
+    if (prev_node && prev_node->pagenum != root->pagenum &&
+        PF_UnpinPage(fd, prev_node->pagenum, FALSE) != PFE_OK) {
+      return AME_PF;
+    }
+
     in_node->pairs = (char *)&in_node->pairs + sizeof(char *);
     prev_node = in_node;
 
@@ -365,19 +371,11 @@ int find_parent(int fd, internal_node *root, const char *key, internal_node **pa
     if (PF_GetThisPage(fd, pagenum, (char **)&in_node) != PFE_OK) {
       return AME_PF;
     }
-
-    /* Don't unpin root */
-    if (prev_pagenum != root->pagenum) {
-      if (PF_UnpinPage(fd, prev_pagenum, FALSE) != PFE_OK) {
-        return AME_PF;
-      }
-    }
-
-    prev_pagenum = pagenum;
   } while (in_node->type == INTERNAL);
 
   /* Unpin the page we did not to take (but not root)*/
-  if (in_node->pagenum != root->pagenum && PF_UnpinPage(fd, in_node->pagenum, FALSE) != PFE_OK) {
+  if (in_node->pagenum != root->pagenum &&
+      PF_UnpinPage(fd, in_node->pagenum, FALSE) != PFE_OK) {
     return AME_PF;
   }
 
