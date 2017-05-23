@@ -424,6 +424,33 @@ void test_delete() {
     next_entry = AM_FindNextEntry(scan_id);
     assert(next_entry.pagenum == values[i].pagenum && next_entry.recnum == values[i].recnum);
   }
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == invalid_value.pagenum &&
+         next_entry.recnum == invalid_value.recnum);
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+  assert(AM_DeleteEntry(am_fd, (char*)&keys[0], values[0]) == AME_OK);
+
+  assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
+  for (i = 0; i < 3; ++i) {
+    if (i == 1 || i == 0) continue;
+
+    next_entry = AM_FindNextEntry(scan_id);
+    assert(next_entry.pagenum == values[i].pagenum && next_entry.recnum == values[i].recnum);
+  }
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == invalid_value.pagenum &&
+         next_entry.recnum == invalid_value.recnum);
+  assert(AM_CloseIndexScan(scan_id) == AME_OK);
+
+  assert(AM_DeleteEntry(am_fd, (char*)&keys[2], values[2]) == AME_OK);
+
+  assert(AM_OpenIndexScan(am_fd, -1, 0) == scan_id);
+
+  next_entry = AM_FindNextEntry(scan_id);
+  assert(next_entry.pagenum == invalid_value.pagenum &&
+         next_entry.recnum == invalid_value.recnum);
+
   assert(AM_CloseIndexScan(scan_id) == AME_OK);
 
   assert(AM_CloseIndex(am_fd) == AME_OK);
@@ -760,7 +787,7 @@ int main() {
   test_insert_scan_simple();
   test_insert_scan_reorder();
 
-  /*test_delete();*/
+  test_delete();
 
   test_scan_operations();
   test_insert_merge();
