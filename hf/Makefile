@@ -1,11 +1,11 @@
 # Makefile for HF layer
 LIB	= hf
 INCDIR	= ${MINIREL_HOME}/h
-INCS	= 
-SRCS	= 
+INCS	=
+SRCS	= hf.c
 TESTS	= hftest.c
 OBJS	= ${SRCS:.c=.o}
-LIBS	= lib${LIB}.a ../pf/libpf.a ../bf/libbf.a
+LIBS	= lib${LIB}.a ../pf/libpf.a ../bf/libbf.a -lm
 
 #############################################################################
 # This macro definition can be overwritten by command-line definitions.
