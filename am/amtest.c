@@ -39,7 +39,7 @@ void (*tests[])() = {amtest1, amtest2, amtest3, cleanup};
 /**********************************************************/
 void amtest1()
 {
-  int value, id, am_fd, hf_fd;
+  int value, am_fd, hf_fd;
   char string_val[STRSIZE];
   char files_to_delete[80];
   RECID recid;
@@ -168,14 +168,16 @@ void amtest2()
     /* clearing retrieved_value  */
     memset(retrieved_value, ' ', STRSIZE);
     recid = AM_FindNextEntry(sd);
-    if (!HF_ValidRecId(hf_fd, recid))
-      if (AMerrno == AME_EOF)
+    if (!HF_ValidRecId(hf_fd, recid)) {
+      if (AMerrno == AME_EOF) {
         break; /*Out of records satisfying predicate */
+      }
       else
       {
         AM_PrintError("Problem finding next entry");
         exit(1);
       }
+    }
     if (HF_GetThisRec(hf_fd, recid, retrieved_value) != HFE_OK)
     {
       HF_PrintError("Problem retrieving record");
@@ -253,7 +255,7 @@ void amtest3()
     /* clearing retrieved_value  */
     memset(retrieved_value, ' ', STRSIZE);
     recid = AM_FindNextEntry(sd);
-    if (!HF_ValidRecId(hf_fd, recid))
+    if (!HF_ValidRecId(hf_fd, recid)) {
       if (AMerrno == AME_EOF)
         break; /*Out of records satisfying predicate */
       else
@@ -261,6 +263,7 @@ void amtest3()
         AM_PrintError("Problem finding next entry");
         exit(1);
       }
+    }
     if (HF_GetThisRec(hf_fd, recid, retrieved_value) != HFE_OK)
     {
       HF_PrintError("Problem retrieving record");

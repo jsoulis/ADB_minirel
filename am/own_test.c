@@ -6,8 +6,6 @@
 #include "stdlib.h"
 #include "am.h"
 
-int AMerrno;
-
 void test_filename_size()
 {
   char *filename = "sweet"; /* strlen("sweet") = 5 */

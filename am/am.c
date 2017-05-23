@@ -1,3 +1,4 @@
+#include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
 
@@ -9,6 +10,7 @@
 #include "pf.h"
 #include "utils.h"
 
+int AMerrno;
 index_table_entry index_table[AM_ITAB_SIZE];
 scan_table_entry scan_table[MAXISCANS];
 
@@ -315,14 +317,13 @@ int AM_InsertEntry(int am_fd, char *key, RECID value) {
   ptr_index = find_ptr_index_leaf(key, le_node->key_length, le_node->key_type,
                                   le_node->pairs, le_node->valid_entries);
 
-                          
   /* merge up */
   if (le_node->valid_entries == max_node_count(le_node->key_length)) {
     if ((err = merge(entry, key, le_node)) != AME_OK) {
       AMerrno = err;
       return AMerrno;
     }
-    if (PF_UnpinPage(entry->fd, le_node->pagenum, TRUE) != PFE_OK ) {
+    if (PF_UnpinPage(entry->fd, le_node->pagenum, TRUE) != PFE_OK) {
       AMerrno = AME_PF;
       return AMerrno;
     }
@@ -331,9 +332,12 @@ int AM_InsertEntry(int am_fd, char *key, RECID value) {
 
   /* Inserting in the middle of a leaf */
   if (ptr_index < le_node->valid_entries) {
-    memmove(le_node->pairs + (le_node->key_length + LEAF_NODE_PTR_SIZE) * (ptr_index + 1),
-           le_node->pairs + (le_node->key_length + LEAF_NODE_PTR_SIZE) * ptr_index,
-           (le_node->key_length + LEAF_NODE_PTR_SIZE) * (le_node->valid_entries - ptr_index));
+    memmove(le_node->pairs +
+                (le_node->key_length + LEAF_NODE_PTR_SIZE) * (ptr_index + 1),
+            le_node->pairs +
+                (le_node->key_length + LEAF_NODE_PTR_SIZE) * ptr_index,
+            (le_node->key_length + LEAF_NODE_PTR_SIZE) *
+                (le_node->valid_entries - ptr_index));
   }
 
   *get_ptr_address_leaf(le_node->pairs, le_node->key_length, ptr_index) = value;
@@ -508,3 +512,5 @@ int AM_DeleteEntry(int am_fd, char *key, RECID value) {
   }
   return ret_val;
 }
+
+void AM_PrintError(char *str) { printf("Error in AM: %s", str); }
