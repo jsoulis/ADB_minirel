@@ -13,6 +13,13 @@
 #include "pf.h"
 #include "hf.h"
 
+#define OP_EQ   1
+#define OP_LT   2
+#define OP_GT   3
+#define OP_LTEQ 4
+#define OP_GTEQ 5
+#define OP_NEQ  6
+
 typedef struct HFhdr_str {
   int numrecs;
   int numpages;
@@ -32,6 +39,10 @@ typedef struct HFftab_ele {
 typedef struct HFScanTab_ele {
   bool_t valid;
   int HFfd;
+  int offset;
+  int op;
+  char type;
+  char *value;
   RECID lastScannedRec;
 } HFScanTab_ele;
 
@@ -218,18 +229,16 @@ RECID HF_InsertRec(int HFfd, char *record) {
   int pagenum, i, j, HFerrno;
   bool_t* bitmapArray;
   char* recordArray;
+  invalid.recnum = -1;
+  invalid.pagenum = -1;
 
   if (HFfd < 0 || HFfd >= HF_FTAB_SIZE) {
     HFerrno = HFE_FD;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
   if (!file_table[HFfd].valid) {
     HFerrno = HFE_FILENOTOPEN;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
@@ -240,8 +249,6 @@ RECID HF_InsertRec(int HFfd, char *record) {
   if(hdr->numpages == 0) {
     if (PF_AllocPage(file->PFfd, &pagenum, &pagebuf) != 0) {
       HFerrno = HFE_PF;
-      invalid.recnum = -1;
-      invalid.pagenum = -1;
       return invalid;
     }
     ++(hdr->numpages);
@@ -264,8 +271,6 @@ RECID HF_InsertRec(int HFfd, char *record) {
     for (i = 0; i < hdr->numpages; i++) {
       if (PF_GetThisPage(file->PFfd, i, &pagebuf) != 0) {
         HFerrno = HFE_PF;
-        invalid.recnum = -1;
-        invalid.pagenum = -1;
         return invalid;
       }
 
@@ -286,8 +291,6 @@ RECID HF_InsertRec(int HFfd, char *record) {
     /*There are data pages but are ALL full */
     if (PF_AllocPage(file->PFfd, &pagenum, &pagebuf) != 0) {
       HFerrno = HFE_PF;
-      invalid.recnum = -1;
-      invalid.pagenum = -1;
       return invalid;
     }
     ++(hdr->numpages);
@@ -358,18 +361,16 @@ RECID HF_GetFirstRec(int HFfd, char *record) {
   RECID recid, invalid;
   int i, j, HFerrno;
   char *pagebuf;
+  invalid.recnum = -1;
+  invalid.pagenum = -1;
 
   if (HFfd < 0 || HFfd >= HF_FTAB_SIZE) {
     HFerrno = HFE_FD;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
   if (!file_table[HFfd].valid) {
     HFerrno = HFE_FILENOTOPEN;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
@@ -379,16 +380,12 @@ RECID HF_GetFirstRec(int HFfd, char *record) {
   if (hdr->numpages == 0)
   {
     HFerrno = HFE_EOF;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 /*get first page and then look for first valid record.*/
 for (i = 0; i < hdr->numpages; i++) {
   if (PF_GetThisPage(file->PFfd, i, &pagebuf) != 0) {
     HFerrno = HFE_PF;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
   bitmapArray = (bool_t *) pagebuf;
@@ -402,8 +399,6 @@ for (i = 0; i < hdr->numpages; i++) {
   }
 }
 HFerrno = HFE_EOF;
-invalid.recnum = -1;
-invalid.pagenum = -1;
 return invalid;
 
 }
@@ -416,18 +411,16 @@ RECID HF_GetNextRec(int HFfd, RECID recid, char *record) {
   bool_t* bitmapArray;
   char* recordArray;
   int HFerrno;
+  invalid.recnum = -1;
+  invalid.pagenum = -1;
 
   if (HFfd < 0 || HFfd >= HF_FTAB_SIZE) {
     HFerrno = HFE_FD;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
   if (!file_table[HFfd].valid) {
     HFerrno = HFE_FILENOTOPEN;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
@@ -437,15 +430,11 @@ RECID HF_GetNextRec(int HFfd, RECID recid, char *record) {
   if (hdr->numpages == 0)
   {
     HFerrno = HFE_EOF;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
   if (recid.pagenum >= hdr->numpages || recid.recnum >= hdr->maxNumRecords ) {
     HFerrno = HFE_INVALIDRECORD;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
@@ -460,15 +449,11 @@ RECID HF_GetNextRec(int HFfd, RECID recid, char *record) {
 
   if (nextRec.pagenum >= hdr->numpages) {
     HFerrno = HFE_INVALIDRECORD;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
   if (PF_GetThisPage(file->PFfd, nextRec.pagenum, &pagebuf) != 0) {
     HFerrno = HFE_PF;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;
   }
 
@@ -477,8 +462,6 @@ RECID HF_GetNextRec(int HFfd, RECID recid, char *record) {
 
   if (bitmapArray[nextRec.recnum]) {
     HFerrno = HFE_INVALIDRECORD;
-    invalid.recnum = -1;
-    invalid.pagenum = -1;
     return invalid;;
   }
   else {
@@ -536,15 +519,236 @@ int HF_GetThisRec(int HFfd, RECID recid, char *record) {
 }
 
 int HF_OpenFileScan(int fileDesc, char attrType, int attrLength, int attrOffset, int op, char *value) {
+HFScanTab_ele *file;
+HFftab_ele *f;
+int i, j, sd;
+RECID fillrec;
+fillrec.recnum = 0;
+fillrec.pagenum = 0;
 
+file = NULL;
+for (i = 0; i < MAXSCANS; ++i) {
+  if (!scan_table[i].valid) {
+    file = &scan_table[i];
+    sd = i;
+    break;
+  }
+}
+if (file == NULL) {
+  return HFE_STABFULL;
+}
+
+if (fileDesc < 0 || fileDesc >= HF_FTAB_SIZE) {
+  return HFE_FD;
+}
+
+if(!file_table[fileDesc].valid) {
+  return HFE_FILENOTOPEN;
+}
+f = &file_table[fileDesc];
+f->scanActive = TRUE;
+
+if(op < 1 || op > 6) {
+  HFE_OPERATOR;
+}
+
+if (attrOffset < 0) {
+  return HFE_ATTROFFSET;
+}
+
+file->HFfd = fileDesc;
+file->op = op;
+file->offset = attrOffset;
+file->lastScannedRec.recnum = fillrec.recnum;
+file->lastScannedRec.pagenum = fillrec.pagenum;
+file->valid = TRUE;
+file->value = malloc(strlen(value));
+strcpy(file->value, value);
+
+switch(attrType) {
+  case 'c':
+  case 'C':
+    if (attrLength < 1 || attrLength > 255) {
+      return HFE_ATTRLENGTH;
+    }
+    file->type = 'c';
+    break;
+  case 'i':
+  case 'I':
+    if (attrLength != 4) {
+      return HFE_ATTRLENGTH;
+    }
+    file->type = 'i';
+    break;
+  case 'f':
+  case 'F':
+    if (attrLength != 4) {
+      return HFE_ATTRLENGTH;
+    }
+    file->type = 'f';
+    break;
+  default:
+    return HFE_ATTRTYPE;
+
+}
+}
+
+int HF_GetRecordValue(HFScanTab_ele *file, float *val1, float *val2, char *record) {
+  if(file->type == 'c') {
+    *val1 = *(char *)(record + file->offset);
+    *val2 = *(char *)(file->value);
+  }
+  if(file->type == 'i') {
+    *val1 = *(int *)(record + file->offset);
+    *val2 = *(int *)(file->value);
+  }
+  if(file->type == 'f') {
+    *val1 = *(float *)(record + file->offset);
+    *val2 = *(float *)(file->value);
+  }
+  return HFE_OK;
 }
 
 RECID HF_FindNextRec(int scanDesc, char *record) {
+  HFScanTab_ele *file;
+  HFftab_ele *f;
+  RECID recid, invalid;
+  int HFerrno, i;
+  float val1;
+  float val2;
+  invalid.recnum = -1;
+  invalid.pagenum = -1;
+
+
+  if (scanDesc < 0 || scanDesc >= MAXSCANS) {
+    HFerrno = HFE_SD;
+    return invalid;
+  }
+  if (!scan_table[scanDesc].valid) {
+    HFerrno = HFE_SCANNOTOPEN;
+    return invalid;
+  }
+
+  file = &scan_table[scanDesc];
+  f = &file_table[file->HFfd];
+
+  recid = HF_GetFirstRec(file->HFfd, record);
+
+  switch (file->op) {
+    case OP_EQ:
+      for (i = 0; i < f->hdr.maxNumRecords; i++) {
+        HF_GetRecordValue(file, &val1, &val2, record);
+        if(val1 == val2) {
+          return recid;
+        }
+        else {
+          recid = HF_GetNextRec(file->HFfd, recid, record);
+        }
+        if(recid.recnum == invalid.recnum && recid.pagenum == invalid.pagenum) {
+          HFerrno = HFE_INVALIDRECORD;
+          return invalid;
+        }
+      }
+      HFerrno = HFE_EOF;
+      break;
+    case OP_LT:
+      for (i = 0; i < f->hdr.maxNumRecords; i++) {
+        HF_GetRecordValue(file, &val1, &val2, record);
+        if(val1 < val2) {
+          return recid;
+        }
+        else {
+          recid = HF_GetNextRec(file->HFfd, recid, record);
+        }
+        if(recid.recnum == invalid.recnum && recid.pagenum == invalid.pagenum) {
+          HFerrno = HFE_INVALIDRECORD;
+          return invalid;
+        }
+      }
+      HFerrno = HFE_EOF;
+      break;
+    case OP_GT:
+      for (i = 0; i < f->hdr.maxNumRecords; i++) {
+        HF_GetRecordValue(file, &val1, &val2, record);
+        if(val1 > val2) {
+          return recid;
+        }
+        else {
+          recid = HF_GetNextRec(file->HFfd, recid, record);
+        }
+        if(recid.recnum == invalid.recnum && recid.pagenum == invalid.pagenum) {
+          HFerrno = HFE_INVALIDRECORD;
+          return invalid;
+        }
+      }
+      HFerrno = HFE_EOF;
+      break;
+    case OP_LTEQ:
+      for (i = 0; i < f->hdr.maxNumRecords; i++) {
+        HF_GetRecordValue(file, &val1, &val2, record);
+        if(val1 <= val2) {
+          return recid;
+        }
+        else {
+          recid = HF_GetNextRec(file->HFfd, recid, record);
+        }
+        if(recid.recnum == invalid.recnum && recid.pagenum == invalid.pagenum) {
+          HFerrno = HFE_INVALIDRECORD;
+          return invalid;
+        }
+      }
+      HFerrno = HFE_EOF;
+      break;
+    case OP_GTEQ:
+      for (i = 0; i < f->hdr.maxNumRecords; i++) {
+        HF_GetRecordValue(file, &val1, &val2, record);
+        if(val1 >= val2) {
+          return recid;
+        }
+        else {
+          recid = HF_GetNextRec(file->HFfd, recid, record);
+        }
+        if(recid.recnum == invalid.recnum && recid.pagenum == invalid.pagenum) {
+          HFerrno = HFE_INVALIDRECORD;
+          return invalid;
+        }
+      }
+      HFerrno = HFE_EOF;
+      break;
+    case OP_NEQ:
+      for (i = 0; i < f->hdr.maxNumRecords; i++) {
+        HF_GetRecordValue(file, &val1, &val2, record);
+        if(val1 != val2) {
+          return recid;
+        }
+        else {
+          recid = HF_GetNextRec(file->HFfd, recid, record);
+        }
+        if(recid.recnum == invalid.recnum && recid.pagenum == invalid.pagenum) {
+          HFerrno = HFE_INVALIDRECORD;
+          return invalid;
+        }
+      }
+      HFerrno = HFE_EOF;
+      break;
+    default:
+      HFerrno = HFE_OPERATOR;
+      return invalid;
+    }
 
 }
 
 int HF_CloseFileScan(int scanDesc) {
+  HFftab_ele *f;
+  HFScanTab_ele *file;
 
+  if(scanDesc < 0 || scanDesc >= MAXSCANS) {
+    return HFE_SD;
+  }
+  file = &scan_table[scanDesc];
+  f = &file_table[file->HFfd];
+  file->valid = FALSE;
+  f->scanActive = FALSE;
 }
 
 bool_t HF_ValidRecId(int HFfd, RECID recid) {
@@ -572,7 +776,4 @@ bool_t HF_ValidRecId(int HFfd, RECID recid) {
   else {
     return FALSE;
   }
-}
-void HF_PrintError(char *errString) {
-  printf("%s\n",errString);
 }
