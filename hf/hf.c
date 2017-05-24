@@ -101,6 +101,10 @@ int HF_CreateFile(char *filename, int recSize) {
   hdr->recsize = recSize;
   hdr->maxNumRecords = maxNumRecords;
 
+  if (PF_UnpinPage(fd, pagenum, TRUE) != PFE_OK) {
+    return HFE_PF;
+  }
+
   if (PF_CloseFile(fd) != 0)
   {
     return HFE_PF;
