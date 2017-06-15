@@ -495,8 +495,7 @@ RECID HF_GetNextRec(int HFfd, RECID recid, char *record) {
   file = &HFfile_table[HFfd];
   hdr = &file->hdr;
 
-  if (hdr->numpages == 0)
-  {
+  if (hdr->numpages == 0) {
     HFerrno = HFE_EOF;
     return invalid;
   }
@@ -511,15 +510,14 @@ RECID HF_GetNextRec(int HFfd, RECID recid, char *record) {
     nextRec.pagenum = recid.pagenum + 1;
   }
   else {
-    nextRec.recnum = recid.recnum + 1;
+    nextRec.recnum = recid.recnum+1;
     nextRec.pagenum = recid.pagenum;
   }
-
-  if (nextRec.pagenum >= hdr->numpages) {
-    HFerrno = HFE_INVALIDRECORD;
+  if(file->pageMap[nextRec.pagenum] == -1)
+  {
+    HFerrno = HFE_EOF;
     return invalid;
   }
-
   if (PF_GetThisPage(file->PFfd, file->pageMap[nextRec.pagenum], &pagebuf) != 0) {
     HFerrno = HFE_PF;
     return invalid;
@@ -528,13 +526,28 @@ RECID HF_GetNextRec(int HFfd, RECID recid, char *record) {
   bitmapArray = (bool_t *)pagebuf;
   recordArray = (char **)(bitmapArray + hdr->maxNumRecords);
 
-  if (bitmapArray[nextRec.recnum]) {
-    HFerrno = HFE_INVALIDRECORD;
-    return invalid;
+  while (bitmapArray[nextRec.recnum]) {
+    if(nextRec.recnum == hdr->maxNumRecords - 1) {
+      if (PF_UnpinPage(file->PFfd, file->pageMap[nextRec.pagenum], FALSE) != PFE_OK) {
+        HFerrno = HFE_PF;
+        return invalid;
+      }
+      nextRec.recnum = -1;
+      nextRec.pagenum++;
+      if(file->pageMap[nextRec.pagenum] == -1)
+      {
+        HFerrno = HFE_EOF;
+        return invalid;
+      }
+      if (PF_GetThisPage(file->PFfd, file->pageMap[nextRec.pagenum], &pagebuf) != 0) {
+        HFerrno = HFE_PF;
+        return invalid;
+      }
+    }
+    nextRec.recnum++;
   }
-  else {
-    strcpy(record, recordArray[nextRec.recnum]);
-  }
+
+  strcpy(record, recordArray[nextRec.recnum]);
 
   if (PF_UnpinPage(file->PFfd, file->pageMap[nextRec.pagenum], FALSE) != PFE_OK) {
     HFerrno = HFE_PF;
@@ -542,7 +555,6 @@ RECID HF_GetNextRec(int HFfd, RECID recid, char *record) {
   }
 
   return nextRec;
-
 
 }
 
